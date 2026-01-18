@@ -57,6 +57,21 @@ class User extends Authenticatable
         return $this->hasMany(Document::class, 'reviewed_by');
     }
 
+    public function reports(): HasMany
+    {
+        return $this->hasMany(Report::class);
+    }
+
+    public function vettedReports(): HasMany
+    {
+        return $this->hasMany(Report::class, 'vetted_by');
+    }
+
+    public function approvedReports(): HasMany
+    {
+        return $this->hasMany(Report::class, 'approved_by');
+    }
+
     public function hasRole($role)
     {
         if (is_array($role)) {

@@ -102,14 +102,24 @@ export default function ArchivingPage() {
       // Validate file type
       if (file.type !== "application/pdf") {
         setUploadError("Only PDF files are allowed")
+        setUploadData({ ...uploadData, file: null })
         setPreviewContent(<p className="text-gray-500 text-sm">No file selected for preview</p>)
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ""
+        }
         return
       }
 
       // Validate file size (5MB)
       if (file.size > 5 * 1024 * 1024) {
         setUploadError("File size must be less than 5MB")
+        setUploadData({ ...uploadData, file: null })
         setPreviewContent(<p className="text-gray-500 text-sm">No file selected for preview</p>)
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ""
+        }
         return
       }
 
@@ -169,6 +179,7 @@ export default function ArchivingPage() {
       }
       reader.readAsDataURL(file)
     } else {
+      setUploadData({ ...uploadData, file: null })
       setPreviewContent(<p className="text-gray-500 text-sm">No file selected for preview</p>)
     }
   }
@@ -184,16 +195,38 @@ export default function ArchivingPage() {
     if (file) {
       if (file.type !== "application/pdf") {
         setUploadError("Only PDF files are allowed")
+        setUploadData({ ...uploadData, file: null })
         setPreviewContent(<p className="text-gray-500 text-sm">No file selected for preview</p>)
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ""
+        }
         return
       }
       if (file.size > 5 * 1024 * 1024) {
         setUploadError("File size must be less than 5MB")
+        setUploadData({ ...uploadData, file: null })
         setPreviewContent(<p className="text-gray-500 text-sm">No file selected for preview</p>)
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ""
+        }
         return
       }
       setUploadError("")
       setUploadData({ ...uploadData, file })
+
+      // Sync with file input - create a DataTransfer object to update the input
+      if (fileInputRef.current) {
+        try {
+          const dataTransfer = new DataTransfer()
+          dataTransfer.items.add(file)
+          fileInputRef.current.files = dataTransfer.files
+        } catch (error) {
+          // Fallback: just clear the value if DataTransfer is not supported
+          console.warn("DataTransfer not supported, file input may be out of sync")
+        }
+      }
 
       // Generate preview for dropped file
       const reader = new FileReader()
@@ -294,9 +327,8 @@ export default function ArchivingPage() {
         body: formData,
       })
 
-      const data = await response.json()
-
       if (response.ok) {
+        const data = await response.json()
         // Reset form
         setUploadData({
           title: "",
@@ -312,7 +344,12 @@ export default function ArchivingPage() {
         // Refresh documents list
         fetchDocuments()
       } else {
-        setUploadError(data.message || "Failed to upload document")
+        try {
+          const data = await response.json()
+          setUploadError(data.message || "Failed to upload document")
+        } catch {
+          setUploadError("Failed to upload document. Please try again.")
+        }
       }
     } catch (error) {
       setUploadError("An error occurred while uploading")

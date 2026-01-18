@@ -7,6 +7,7 @@ use App\Http\Controllers\MissionController;
 use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\ReportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -56,4 +57,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/documents/{document}/approve', [DocumentController::class, 'approve']);
     Route::post('/documents/{document}/reject', [DocumentController::class, 'reject']);
     Route::delete('/documents/{document}', [DocumentController::class, 'destroy']);
+
+    // Reports
+    Route::get('/reports', [ReportController::class, 'index']);
+    Route::get('/reports/statistics', [ReportController::class, 'statistics']);
+    Route::get('/reports/{report}', [ReportController::class, 'show']);
+    Route::post('/reports', [ReportController::class, 'store']);
+    Route::put('/reports/{report}', [ReportController::class, 'update']);
+    Route::post('/reports/{report}/vet', [ReportController::class, 'vet']);
+    Route::post('/reports/{report}/approve', [ReportController::class, 'approve']);
+    Route::post('/reports/{report}/reject', [ReportController::class, 'reject']);
+    Route::delete('/reports/{report}', [ReportController::class, 'destroy']);
 });

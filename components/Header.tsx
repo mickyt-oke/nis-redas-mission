@@ -53,14 +53,19 @@ export default function Header() {
             </Link>
             {user && (
               <>
-                <Link href="/missions" className="text-gray-700 hover:text-[#1b7b3c] transition">
-                  Missions
-                </Link>
+                {(user.role === "admin" || user.role === "super_admin") && (
+                  <Link href="/missions" className="text-gray-700 hover:text-[#1b7b3c] transition">
+                    Missions
+                  </Link>
+                )}
                 {user.role === "user" && (
                   <Link href="/archiving" className="text-gray-700 hover:text-[#1b7b3c] transition">
                     Archiving
                   </Link>
                 )}
+                <Link href="/reporting" className="text-gray-700 hover:text-[#1b7b3c] transition">
+                  Reporting
+                </Link>
                 {(user.role === "admin" || user.role === "super_admin") && (
                   <Link href="/documents-review" className="text-gray-700 hover:text-[#1b7b3c] transition">
                     Documents Review
@@ -137,13 +142,15 @@ export default function Header() {
             </Link>
             {user ? (
               <>
-                <Link
-                  href="/missions"
-                  className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Missions
-                </Link>
+                {(user.role === "admin" || user.role === "super_admin") && (
+                  <Link
+                    href="/missions"
+                    className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Missions
+                  </Link>
+                )}
                 {user.role === "user" && (
                   <Link
                     href="/archiving"
@@ -153,6 +160,13 @@ export default function Header() {
                     Archiving
                   </Link>
                 )}
+                <Link
+                  href="/reporting"
+                  className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Reporting
+                </Link>
                 {(user.role === "admin" || user.role === "super_admin") && (
                   <Link
                     href="/documents-review"

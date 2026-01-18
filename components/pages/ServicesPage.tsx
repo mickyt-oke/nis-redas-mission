@@ -2,39 +2,39 @@
 
 import Header from "@/components/Header"
 import Footer from "@/components/Footer"
-import { Dessert as Passport, Globe, FileCheck, Users, Building2, Zap } from "lucide-react"
+import { Dessert as Passport, Globe, FileCheck, Users, Building2, Zap, Book, BookImageIcon } from "lucide-react"
 
 export default function ServicesPage() {
   const services = [
     {
-      icon: Passport,
-      title: "Visa Management",
-      description: "Complete visa application processing, tracking, and approval workflow management",
-    },
-    {
-      icon: Passport,
-      title: "Passport Services",
-      description: "Streamlined passport issuance and renewal processes across all missions",
-    },
-    {
       icon: FileCheck,
-      title: "Document Processing",
-      description: "Secure document submission, verification, and archival system",
+      title: "Report Management",
+      description: "Efficient handling and archiving of visa and passport reports",
     },
     {
-      icon: Globe,
-      title: "Mission Support",
-      description: "Dedicated support for all regional diplomatic missions worldwide",
+      icon: Passport,
+      title: "Returns Processing",
+      description: "Streamlined processing of return applications for diplomatic missions",
+    },
+    {
+      icon: BookImageIcon,
+      title: "Document Management",
+      description: "Secure document submission, verification, and archival system",
     },
     {
       icon: Users,
       title: "User Management",
-      description: "Comprehensive role-based access control and user administration",
+      description: "Global access for mission staff with role-based permissions",
+    },
+    {
+      icon: Globe,
+      title: "Administration Dashboard",
+      description: "Comprehensive overview and control of all mission activities",
     },
     {
       icon: Building2,
-      title: "Mission Administration",
-      description: "Create, manage, and monitor all international mission operations",
+      title: "Mission Operations",
+      description: "Create, manage, and monitor all Foreign Mission operations",
     },
   ]
 
@@ -45,7 +45,7 @@ export default function ServicesPage() {
       <section className="bg-gradient-to-br from-[#1b7b3c] to-[#155730] text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-4xl font-bold mb-4">Our Services</h1>
-          <p className="text-xl text-gray-100">Comprehensive solutions for immigration mission management</p>
+          <p className="text-xl text-gray-100">Comprehensive solution for Nigeria Immigration Foreign Desk</p>
         </div>
       </section>
 
@@ -65,12 +65,12 @@ export default function ServicesPage() {
 
       <section className="bg-gray-50 py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-center mb-12">Why Choose REDAS?</h2>
+          <h2 className="text-3xl font-bold text-center mb-12">Why Transition to REDAS?</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {[
               {
                 title: "Lightning Fast",
-                description: "Optimized for speed and performance across all operations",
+                description: "Experience unparalleled speed in report processing and document management",
               },
               {
                 title: "Global Reach",
@@ -90,7 +90,7 @@ export default function ServicesPage() {
               },
               {
                 title: "Scalable",
-                description: "Grows with your organization's needs",
+                description: "Grows with Nigeria Immigration Service's needs",
               },
             ].map((feature, index) => (
               <div key={index} className="flex gap-4">
