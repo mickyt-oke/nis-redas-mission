@@ -2,16 +2,20 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "../contexts/AuthContext"
-import { Search, Send, Paperclip, MoreVertical, X, Edit2, Trash2 } from "lucide-react"
+import { Search, Send, Paperclip, MoreVertical, X, Edit2, Trash2, Users, MessageSquare, Info, UserPlus } from "lucide-react"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Textarea } from "../ui/textarea"
 import { ScrollArea } from "../ui/scroll-area"
-import { Avatar, AvatarFallback } from "../ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu"
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
+import { Badge } from "../ui/badge"
 import { toast } from "sonner"
 import { formatDistanceToNow } from "date-fns"
+import { cn } from "@/lib/utils"
 
 interface User {
   id: string
@@ -53,9 +57,11 @@ export default function MessagingPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [userSearchQuery, setUserSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<User[]>([])
+  const [allUsers, setAllUsers] = useState<User[]>([])
   const [isNewMessageOpen, setIsNewMessageOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [editingMessage, setEditingMessage] = useState<Message | null>(null)
+  const [activeTab, setActiveTab] = useState("chats")
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null
@@ -184,6 +190,24 @@ export default function MessagingPage() {
     }
   }
 
+  // Fetch all users for directory
+  const fetchAllUsers = async () => {
+    try {
+      const response = await fetch(`${apiUrl}/mission-staff`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setAllUsers(Array.isArray(data) ? data : data.data || [])
+      }
+    } catch (error) {
+      console.error("Error fetching mission staff users:", error)
+    }
+  }
+
   // Search users
   const searchUsers = async (query: string) => {
     if (!query.trim()) {
@@ -248,6 +272,7 @@ export default function MessagingPage() {
 
   useEffect(() => {
     fetchConversations()
+    fetchAllUsers()
     // Poll for new messages every 10 seconds
     const interval = setInterval(() => {
       if (selectedConversation) {
@@ -267,159 +292,237 @@ export default function MessagingPage() {
   })
 
   const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
+    return `${firstName?.charAt(0) || ""}${lastName?.charAt(0) || ""}`.toUpperCase()
   }
 
+  const filteredUsers = allUsers.filter((u) => {
+    const fullName = `${u.first_name} ${u.last_name}`.toLowerCase()
+    return fullName.includes(userSearchQuery.toLowerCase()) || u.email.toLowerCase().includes(userSearchQuery.toLowerCase())
+  })
+
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Conversations List */}
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200">
+    <div className="flex h-[calc(100vh-4rem)] bg-slate-50/50 p-4 gap-4">
+      {/* Sidebar Card */}
+      <Card className="w-80 flex flex-col shadow-md border-slate-200 overflow-hidden">
+        <CardHeader className="p-4 pb-2">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold">Messages</h2>
-            <Dialog open={isNewMessageOpen} onOpenChange={setIsNewMessageOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="bg-[#1b7b3c] hover:bg-[#155730]">
-                  New Message
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>New Message</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Input
-                      placeholder="Search users..."
-                      value={userSearchQuery}
-                      onChange={(e) => {
-                        setUserSearchQuery(e.target.value)
-                        searchUsers(e.target.value)
-                      }}
-                    />
-                  </div>
-                  <ScrollArea className="h-64">
-                    {searchResults.map((searchUser) => (
-                      <div
-                        key={searchUser.id}
-                        className="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer rounded-lg"
-                        onClick={() => startConversation(searchUser.id)}
-                      >
-                        <Avatar>
-                          <AvatarFallback>{getInitials(searchUser.first_name, searchUser.last_name)}</AvatarFallback>
+            <CardTitle className="text-xl font-bold flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-[#1b7b3c]" />
+              Messages
+            </CardTitle>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="rounded-full text-[#1b7b3c] hover:bg-green-50"
+              onClick={() => {
+                setActiveTab("directory")
+                setUserSearchQuery("")
+              }}
+            >
+              <UserPlus className="w-5 h-5" />
+            </Button>
+          </div>
+
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="chats" className="text-xs">
+                Chats
+              </TabsTrigger>
+              <TabsTrigger value="directory" className="text-xs">
+                Directory
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="relative mb-2">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <Input
+                placeholder={activeTab === "chats" ? "Search chats..." : "Search directory..."}
+                value={activeTab === "chats" ? searchQuery : userSearchQuery}
+                onChange={(e) => (activeTab === "chats" ? setSearchQuery(e.target.value) : setUserSearchQuery(e.target.value))}
+                className="pl-9 bg-slate-100/50 border-none h-9 text-sm focus-visible:ring-1 focus-visible:ring-[#1b7b3c]"
+              />
+            </div>
+          </Tabs>
+        </CardHeader>
+
+        <CardContent className="flex-1 p-0 overflow-hidden">
+          <ScrollArea className="h-full">
+            {activeTab === "chats" ? (
+              <div className="flex flex-col">
+                {filteredConversations.length > 0 ? (
+                  filteredConversations.map((conversation) => (
+                    <div
+                      key={conversation.id}
+                      className={cn(
+                        "group flex items-center gap-3 p-3 cursor-pointer transition-colors border-l-4 border-transparent",
+                        selectedConversation?.id === conversation.id
+                          ? "bg-green-50/50 border-[#1b7b3c]"
+                          : "hover:bg-slate-50 border-transparent",
+                      )}
+                      onClick={() => selectConversation(conversation)}
+                    >
+                      <div className="relative">
+                        <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
+                          <AvatarFallback className="bg-slate-200 text-slate-600 font-semibold">
+                            {conversation.other_user
+                              ? getInitials(conversation.other_user.first_name, conversation.other_user.last_name)
+                              : "?"}
+                          </AvatarFallback>
                         </Avatar>
-                        <div>
-                          <p className="font-medium">
-                            {searchUser.first_name} {searchUser.last_name}
+                        {conversation.unread_count > 0 && (
+                          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#1b7b3c] text-[10px] font-bold text-white ring-2 ring-white">
+                            {conversation.unread_count}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <p className="font-semibold text-sm text-slate-900 truncate">
+                            {conversation.other_user
+                              ? `${conversation.other_user.first_name} ${conversation.other_user.last_name}`
+                              : "Unknown User"}
                           </p>
-                          <p className="text-sm text-gray-500">{searchUser.email}</p>
+                          <span className="text-[10px] text-slate-400 whitespace-nowrap">
+                            {conversation.updated_at &&
+                              formatDistanceToNow(new Date(conversation.updated_at), { addSuffix: false })}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 truncate leading-relaxed">
+                          {conversation.latest_message?.content || "No messages yet"}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-8 text-center">
+                    <p className="text-sm text-slate-400">No conversations found</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col">
+                {filteredUsers.length > 0 ? (
+                  filteredUsers.map((u) => (
+                    <div
+                      key={u.id}
+                      className="group flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 transition-colors"
+                      onClick={() => startConversation(u.id)}
+                    >
+                      <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
+                        <AvatarFallback className="bg-slate-100 text-slate-600 font-semibold">
+                          {getInitials(u.first_name, u.last_name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm text-slate-900 truncate">
+                          {u.first_name} {u.last_name}
+                        </p>
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-slate-100 text-slate-500 font-normal">
+                            {u.role || "User"}
+                          </Badge>
+                          <span className="text-[10px] text-slate-400 truncate">{u.email}</span>
                         </div>
                       </div>
-                    ))}
-                  </ScrollArea>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              placeholder="Search conversations..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </div>
-
-        <ScrollArea className="flex-1">
-          {filteredConversations.map((conversation) => (
-            <div
-              key={conversation.id}
-              className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
-                selectedConversation?.id === conversation.id ? "bg-blue-50" : ""
-              }`}
-              onClick={() => selectConversation(conversation)}
-            >
-              <div className="flex items-start gap-3">
-                <Avatar>
-                  <AvatarFallback>
-                    {conversation.other_user
-                      ? getInitials(conversation.other_user.first_name, conversation.other_user.last_name)
-                      : "?"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium truncate">
-                      {conversation.other_user
-                        ? `${conversation.other_user.first_name} ${conversation.other_user.last_name}`
-                        : "Unknown User"}
-                    </p>
-                    {conversation.unread_count > 0 && (
-                      <span className="bg-[#1b7b3c] text-white text-xs rounded-full px-2 py-1">
-                        {conversation.unread_count}
-                      </span>
-                    )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-8 text-center">
+                    <p className="text-sm text-slate-400">No users found</p>
                   </div>
-                  <p className="text-sm text-gray-500 truncate">
-                    {conversation.latest_message?.content || "No messages yet"}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {conversation.updated_at && formatDistanceToNow(new Date(conversation.updated_at), { addSuffix: true })}
-                  </p>
-                </div>
+                )}
               </div>
-            </div>
-          ))}
-        </ScrollArea>
-      </div>
+            )}
+          </ScrollArea>
+        </CardContent>
+      </Card>
 
-      {/* Messages Area */}
-      <div className="flex-1 flex flex-col">
+      {/* Chat Window Card */}
+      <Card className="flex-1 flex flex-col shadow-md border-slate-200 overflow-hidden">
         {selectedConversation ? (
           <>
             {/* Chat Header */}
-            <div className="bg-white border-b border-gray-200 p-4">
+            <div className="p-4 border-b border-slate-100 bg-white flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Avatar>
-                  <AvatarFallback>
+                <Avatar className="h-10 w-10 border border-slate-100">
+                  <AvatarFallback className="bg-green-50 text-[#1b7b3c] font-bold">
                     {selectedConversation.other_user
                       ? getInitials(selectedConversation.other_user.first_name, selectedConversation.other_user.last_name)
                       : "?"}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-medium">
+                  <p className="font-bold text-slate-900">
                     {selectedConversation.other_user
                       ? `${selectedConversation.other_user.first_name} ${selectedConversation.other_user.last_name}`
                       : "Unknown User"}
                   </p>
-                  <p className="text-sm text-gray-500">{selectedConversation.other_user?.email}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-2 w-2 rounded-full bg-green-500" />
+                    <p className="text-xs text-slate-500">{selectedConversation.other_user?.email}</p>
+                  </div>
                 </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-600">
+                  <Info className="w-5 h-5" />
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-600">
+                      <MoreVertical className="w-5 h-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem className="text-red-600">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Conversation
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 
-            {/* Messages */}
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-4">
-                {messages.map((message) => {
+            {/* Messages Area */}
+            <ScrollArea className="flex-1 p-6 bg-slate-50/30">
+              <div className="space-y-6">
+                {messages.map((message, index) => {
                   const isOwnMessage = message.user_id === user?.id
+                  const showAvatar = index === 0 || messages[index - 1].user_id !== message.user_id
+
                   return (
-                    <div key={message.id} className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}>
-                      <div className={`max-w-[70%] ${isOwnMessage ? "order-2" : "order-1"}`}>
+                    <div key={message.id} className={cn("flex items-end gap-2", isOwnMessage ? "justify-end" : "justify-start")}>
+                      {!isOwnMessage && (
+                        <div className="w-8 h-8 flex-shrink-0">
+                          {showAvatar && (
+                            <Avatar className="h-8 w-8 border border-slate-100">
+                              <AvatarFallback className="text-[10px] bg-slate-200">
+                                {getInitials(message.user.first_name, message.user.last_name)}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                        </div>
+                      )}
+                      <div className={cn("flex flex-col max-w-[75%]", isOwnMessage ? "items-end" : "items-start")}>
                         <div
-                          className={`rounded-lg p-3 ${
-                            isOwnMessage ? "bg-[#1b7b3c] text-white" : "bg-gray-200 text-gray-900"
-                          }`}
+                          className={cn(
+                            "relative px-4 py-2.5 rounded-2xl text-sm shadow-sm",
+                            isOwnMessage
+                              ? "bg-[#1b7b3c] text-white rounded-br-none"
+                              : "bg-white text-slate-800 border border-slate-100 rounded-bl-none",
+                          )}
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="break-words">{message.content}</p>
+                          <div className="flex items-start justify-between gap-4">
+                            <p className="leading-relaxed whitespace-pre-wrap break-words">{message.content}</p>
                             {isOwnMessage && (
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-white hover:bg-[#155730]">
-                                    <MoreVertical className="h-4 w-4" />
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-5 w-5 p-0 text-white/70 hover:text-white hover:bg-white/10"
+                                  >
+                                    <MoreVertical className="h-3 w-3" />
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
@@ -445,16 +548,23 @@ export default function MessagingPage() {
                               href={message.attachment_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center gap-2 mt-2 text-sm underline"
+                              className={cn(
+                                "flex items-center gap-2 mt-2 p-2 rounded-lg text-xs border transition-colors",
+                                isOwnMessage
+                                  ? "bg-white/10 border-white/20 hover:bg-white/20"
+                                  : "bg-slate-50 border-slate-100 hover:bg-slate-100",
+                              )}
                             >
-                              <Paperclip className="h-4 w-4" />
-                              {message.attachment_name}
+                              <Paperclip className="h-3 w-3" />
+                              <span className="truncate max-w-[150px]">{message.attachment_name}</span>
                             </a>
                           )}
-                          <p className={`text-xs mt-1 ${isOwnMessage ? "text-green-100" : "text-gray-500"}`}>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-1 px-1">
+                          <span className="text-[10px] text-slate-400">
                             {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
-                            {message.is_edited && " (edited)"}
-                          </p>
+                          </span>
+                          {message.is_edited && <span className="text-[10px] text-slate-400 italic">• edited</span>}
                         </div>
                       </div>
                     </div>
@@ -464,13 +574,17 @@ export default function MessagingPage() {
             </ScrollArea>
 
             {/* Message Input */}
-            <div className="bg-white border-t border-gray-200 p-4">
+            <div className="p-4 bg-white border-t border-slate-100">
               {editingMessage && (
-                <div className="flex items-center justify-between mb-2 p-2 bg-blue-50 rounded">
-                  <span className="text-sm text-blue-600">Editing message</span>
+                <div className="flex items-center justify-between mb-3 p-2 px-3 bg-blue-50 rounded-lg border border-blue-100">
+                  <div className="flex items-center gap-2">
+                    <Edit2 className="w-3 h-3 text-blue-600" />
+                    <span className="text-xs font-medium text-blue-600">Editing message</span>
+                  </div>
                   <Button
                     variant="ghost"
                     size="sm"
+                    className="h-6 w-6 p-0 hover:bg-blue-100 text-blue-600"
                     onClick={() => {
                       setEditingMessage(null)
                       setMessageContent("")
@@ -480,9 +594,12 @@ export default function MessagingPage() {
                   </Button>
                 </div>
               )}
-              <div className="flex items-end gap-2">
+              <div className="flex items-end gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 focus-within:border-[#1b7b3c] focus-within:ring-1 focus-within:ring-[#1b7b3c] transition-all">
+                <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-400 hover:text-[#1b7b3c] hover:bg-green-50">
+                  <Paperclip className="w-5 h-5" />
+                </Button>
                 <Textarea
-                  placeholder="Type a message..."
+                  placeholder="Type your message..."
                   value={messageContent}
                   onChange={(e) => setMessageContent(e.target.value)}
                   onKeyDown={(e) => {
@@ -495,12 +612,13 @@ export default function MessagingPage() {
                       }
                     }
                   }}
-                  className="flex-1 min-h-[60px] max-h-[120px]"
+                  className="flex-1 min-h-[40px] max-h-[120px] bg-transparent border-none focus-visible:ring-0 resize-none py-2 text-sm"
                 />
                 <Button
                   onClick={editingMessage ? updateMessage : sendMessage}
                   disabled={!messageContent.trim() || loading}
-                  className="bg-[#1b7b3c] hover:bg-[#155730]"
+                  className="h-9 w-9 rounded-lg bg-[#1b7b3c] hover:bg-[#155730] shadow-sm flex-shrink-0"
+                  size="icon"
                 >
                   <Send className="h-4 w-4" />
                 </Button>
@@ -508,14 +626,27 @@ export default function MessagingPage() {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-500">
-            <div className="text-center">
-              <p className="text-lg font-medium mb-2">No conversation selected</p>
-              <p className="text-sm">Choose a conversation or start a new one</p>
+          <div className="flex-1 flex flex-col items-center justify-center bg-slate-50/30 p-12 text-center">
+            <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-6">
+              <MessageSquare className="w-10 h-10 text-[#1b7b3c]" />
             </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Your Messages</h3>
+            <p className="text-slate-500 max-w-xs mx-auto mb-8">
+              Select a conversation from the list or start a new one from the directory to begin messaging.
+            </p>
+            <Button
+              className="bg-[#1b7b3c] hover:bg-[#155730]"
+              onClick={() => {
+                setActiveTab("directory")
+                setUserSearchQuery("")
+              }}
+            >
+              <UserPlus className="w-4 h-4 mr-2" />
+              Start New Conversation
+            </Button>
           </div>
         )}
-      </div>
+      </Card>
     </div>
   )
 }

@@ -29,6 +29,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Missions
     Route::get('/missions', [MissionController::class, 'index']);
     Route::get('/missions/{mission}', [MissionController::class, 'show']);
+    Route::get('/mission-staff', [MissionController::class, 'getMissionStaff']);
     Route::post('/missions', [MissionController::class, 'store']);
     Route::put('/missions/{mission}', [MissionController::class, 'update']);
     Route::delete('/missions/{mission}', [MissionController::class, 'destroy']);

@@ -123,4 +123,26 @@ class MissionController extends Controller
 
         return response()->json(['message' => 'Staff removed successfully']);
     }
+
+    /**
+     * Get all mission staff users
+     */
+    public function getMissionStaff()
+    {
+        $staff = \DB::table('mission_staff')
+            ->join('users', 'mission_staff.user_id', '=', 'users.id')
+            ->select(
+                'users.id',
+                'users.first_name',
+                'users.last_name',
+                'users.email',
+                'users.role',
+                'mission_staff.position',
+                'mission_staff.assigned_at'
+            )
+            ->whereNull('mission_staff.removed_at')
+            ->get();
+
+        return response()->json($staff);
+    }
 }
