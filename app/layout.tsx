@@ -5,7 +5,7 @@ import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { AuthProvider } from "@/components/contexts/AuthContext"
 import { NotificationProvider } from "@/components/contexts/NotificationContext"
-import { SidebarProvider } from "@/components/ui/sidebar"
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/AppSidebar"
 import { Toaster } from "@/components/ui/sonner"
 
@@ -47,9 +47,9 @@ export default function RootLayout({
           <NotificationProvider>
             <SidebarProvider>
               <AppSidebar />
-              <main className="flex-1 w-full">
+              <SidebarInset>
                 {children}
-              </main>
+              </SidebarInset>
             </SidebarProvider>
             <Toaster />
           </NotificationProvider>

@@ -262,7 +262,7 @@ export default function AdminDashboard() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
           <p className="text-gray-600 mt-2">
-            Welcome back, {user?.firstName}! Here's what's happening with your system.
+            Welcome back, {user?.firstName}! Here is an overview of the system statistics and recent activities.
           </p>
         </div>
 

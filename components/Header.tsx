@@ -86,7 +86,10 @@ export default function Header() {
                   <p className="text-sm font-medium text-gray-900">
                     {user.firstName} {user.lastName}
                   </p>
-                  <p className="text-xs text-gray-500 capitalize">{user.role.replace("_", " ")}</p>
+                  {/* display user role and mission from mission_staff table */}
+                  <p className="text-xs text-gray-500 capitalize">
+                    {user.role.replace("_", " ")}
+                  </p>  
                 </div>
                 <Link href="/profile" className="p-2 hover:bg-gray-100 rounded-lg transition">
                   <User size={20} className="text-gray-600" />

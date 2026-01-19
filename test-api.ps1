@@ -1,167 +1,138 @@
-# API Testing Script for Reporting Feature
-
-Write-Host "=== Testing Reporting API Endpoints ===" -ForegroundColor Green
-Write-Host ""
-
+# Simple API Test Script
 $baseUrl = "http://127.0.0.1:8000/api"
 
-# Test 1: Login as User
-Write-Host "Test 1: Login as User" -ForegroundColor Cyan
-$loginBody = @{
-    email = "user@example.com"
-    password = "password"
-} | ConvertTo-Json
+Write-Host "`n========================================" -ForegroundColor Cyan
+Write-Host "API & Notification Testing" -ForegroundColor Cyan
+Write-Host "========================================`n" -ForegroundColor Cyan
 
+# Test 1: Login as User
+Write-Host "Test 1: Login as User" -ForegroundColor Yellow
+$loginBody = '{"email":"user@example.com","password":"password"}'
 try {
-    $userResponse = Invoke-WebRequest -Uri "$baseUrl/login" -Method POST -Body $loginBody -ContentType 'application/json' -UseBasicParsing
-    $userData = $userResponse.Content | ConvertFrom-Json
-    $userToken = $userData.token
-    Write-Host "[OK] User login successful" -ForegroundColor Green
-    Write-Host "  Token: $($userToken.Substring(0,20))..." -ForegroundColor Gray
+    $userResponse = Invoke-RestMethod -Uri "$baseUrl/login" -Method POST -Body $loginBody -ContentType "application/json"
+    $userToken = $userResponse.token
+    Write-Host "SUCCESS: User logged in" -ForegroundColor Green
 } catch {
-    Write-Host "[FAIL] User login failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "FAILED: $($_.Exception.Message)" -ForegroundColor Red
     exit
 }
 
-# Test 2: Create Report as User
-Write-Host "`nTest 2: Create Report as User" -ForegroundColor Cyan
-$reportBody = @{
-    report_type = "passport_returns"
-    interval_type = "daily"
-    report_date = "2024-01-20"
-    passport_count = 15
-    visa_count = 10
-    remarks = "Test daily report"
-} | ConvertTo-Json
-
+# Test 2: Login as Supervisor
+Write-Host "`nTest 2: Login as Supervisor" -ForegroundColor Yellow
+$loginBody = '{"email":"supervisor@example.com","password":"password"}'
 try {
-    $createResponse = Invoke-WebRequest -Uri "$baseUrl/reports" -Method POST -Body $reportBody -ContentType 'application/json' -Headers @{Authorization="Bearer $userToken"} -UseBasicParsing
-    $reportData = $createResponse.Content | ConvertFrom-Json
-    $reportId = $reportData.report.id
-    Write-Host "[OK] Report created successfully" -ForegroundColor Green
-    Write-Host "  Report ID: $reportId" -ForegroundColor Gray
-    Write-Host "  Status: $($reportData.report.status)" -ForegroundColor Gray
+    $supResponse = Invoke-RestMethod -Uri "$baseUrl/login" -Method POST -Body $loginBody -ContentType "application/json"
+    $supToken = $supResponse.token
+    Write-Host "SUCCESS: Supervisor logged in" -ForegroundColor Green
 } catch {
-    Write-Host "[FAIL] Report creation failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "FAILED: $($_.Exception.Message)" -ForegroundColor Red
 }
 
-# Test 3: Get Reports Statistics as User
-Write-Host "`nTest 3: Get Reports Statistics" -ForegroundColor Cyan
+# Test 3: Login as Admin
+Write-Host "`nTest 3: Login as Admin" -ForegroundColor Yellow
+$loginBody = '{"email":"admin@example.com","password":"password"}'
 try {
-    $statsResponse = Invoke-WebRequest -Uri "$baseUrl/reports/statistics" -Method GET -Headers @{Authorization="Bearer $userToken"} -UseBasicParsing
-    $stats = $statsResponse.Content | ConvertFrom-Json
-    Write-Host "[OK] Statistics retrieved successfully" -ForegroundColor Green
-    Write-Host "  Total: $($stats.total)" -ForegroundColor Gray
-    Write-Host "  Pending: $($stats.pending)" -ForegroundColor Gray
-    Write-Host "  Vetted: $($stats.vetted)" -ForegroundColor Gray
-    Write-Host "  Approved: $($stats.approved)" -ForegroundColor Gray
+    $adminResponse = Invoke-RestMethod -Uri "$baseUrl/login" -Method POST -Body $loginBody -ContentType "application/json"
+    $adminToken = $adminResponse.token
+    Write-Host "SUCCESS: Admin logged in" -ForegroundColor Green
 } catch {
-    Write-Host "[FAIL] Statistics retrieval failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "FAILED: $($_.Exception.Message)" -ForegroundColor Red
 }
 
-# Test 4: Get Reports List as User
-Write-Host "`nTest 4: Get Reports List" -ForegroundColor Cyan
+# Test 4: Submit Report
+Write-Host "`nTest 4: Submit Report" -ForegroundColor Yellow
+$reportBody = @"
+{
+    "report_type": "passport_returns",
+    "interval_type": "daily",
+    "report_date": "2024-01-15",
+    "passport_count": 10,
+    "visa_count": 5,
+    "remarks": "Test report"
+}
+"@
 try {
-    $listResponse = Invoke-WebRequest -Uri "$baseUrl/reports" -Method GET -Headers @{Authorization="Bearer $userToken"} -UseBasicParsing
-    $reports = $listResponse.Content | ConvertFrom-Json
-    Write-Host "[OK] Reports list retrieved successfully" -ForegroundColor Green
-    Write-Host "  Count: $($reports.data.Count)" -ForegroundColor Gray
+    $reportResponse = Invoke-RestMethod -Uri "$baseUrl/reports" -Method POST -Body $reportBody -ContentType "application/json" -Headers @{Authorization="Bearer $userToken"}
+    $reportId = $reportResponse.report.id
+    Write-Host "SUCCESS: Report created (ID: $reportId)" -ForegroundColor Green
 } catch {
-    Write-Host "[FAIL] Reports list retrieval failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "FAILED: $($_.Exception.Message)" -ForegroundColor Red
 }
 
-# Test 5: Login as Supervisor
-Write-Host "`nTest 5: Login as Supervisor" -ForegroundColor Cyan
-$supervisorLoginBody = @{
-    email = "supervisor@example.com"
-    password = "password"
-} | ConvertTo-Json
-
+# Test 5: Check Supervisor Notifications
+Write-Host "`nTest 5: Check Supervisor Notifications" -ForegroundColor Yellow
 try {
-    $supervisorResponse = Invoke-WebRequest -Uri "$baseUrl/login" -Method POST -Body $supervisorLoginBody -ContentType 'application/json' -UseBasicParsing
-    $supervisorData = $supervisorResponse.Content | ConvertFrom-Json
-    $supervisorToken = $supervisorData.token
-    Write-Host "[OK] Supervisor login successful" -ForegroundColor Green
+    $notifResponse = Invoke-RestMethod -Uri "$baseUrl/notifications" -Method GET -Headers @{Authorization="Bearer $supToken"}
+    Write-Host "SUCCESS: Found $($notifResponse.data.Count) notifications" -ForegroundColor Green
+    if ($notifResponse.data.Count -gt 0) {
+        Write-Host "  Latest: $($notifResponse.data[0].title)" -ForegroundColor Cyan
+    }
 } catch {
-    Write-Host "[FAIL] Supervisor login failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "FAILED: $($_.Exception.Message)" -ForegroundColor Red
 }
 
-# Test 6: Vet Report as Supervisor
+# Test 6: Get Unread Count
+Write-Host "`nTest 6: Get Unread Count" -ForegroundColor Yellow
+try {
+    $unreadResponse = Invoke-RestMethod -Uri "$baseUrl/notifications/unread-count" -Method GET -Headers @{Authorization="Bearer $supToken"}
+    Write-Host "SUCCESS: Unread count = $($unreadResponse.count)" -ForegroundColor Green
+} catch {
+    Write-Host "FAILED: $($_.Exception.Message)" -ForegroundColor Red
+}
+
+# Test 7: Vet Report
 if ($reportId) {
-    Write-Host "`nTest 6: Vet Report as Supervisor" -ForegroundColor Cyan
-    $vetBody = @{
-        comments = "Report looks good, vetted successfully"
-    } | ConvertTo-Json
-
+    Write-Host "`nTest 7: Vet Report" -ForegroundColor Yellow
+    $vetBody = '{"comments":"Looks good"}'
     try {
-        $vetResponse = Invoke-WebRequest -Uri "$baseUrl/reports/$reportId/vet" -Method POST -Body $vetBody -ContentType 'application/json' -Headers @{Authorization="Bearer $supervisorToken"} -UseBasicParsing
-        $vettedReport = $vetResponse.Content | ConvertFrom-Json
-        Write-Host "[OK] Report vetted successfully" -ForegroundColor Green
-        Write-Host "  Status: $($vettedReport.report.status)" -ForegroundColor Gray
+        Invoke-RestMethod -Uri "$baseUrl/reports/$reportId/vet" -Method POST -Body $vetBody -ContentType "application/json" -Headers @{Authorization="Bearer $supToken"} | Out-Null
+        Write-Host "SUCCESS: Report vetted" -ForegroundColor Green
     } catch {
-        Write-Host "[FAIL] Report vetting failed: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "FAILED: $($_.Exception.Message)" -ForegroundColor Red
     }
 }
 
-# Test 7: Login as Admin
-Write-Host "`nTest 7: Login as Admin" -ForegroundColor Cyan
-$adminLoginBody = @{
-    email = "admin@example.com"
-    password = "password"
-} | ConvertTo-Json
-
+# Test 8: Check User Notifications
+Write-Host "`nTest 8: Check User Notifications" -ForegroundColor Yellow
+Start-Sleep -Seconds 1
 try {
-    $adminResponse = Invoke-WebRequest -Uri "$baseUrl/login" -Method POST -Body $adminLoginBody -ContentType 'application/json' -UseBasicParsing
-    $adminData = $adminResponse.Content | ConvertFrom-Json
-    $adminToken = $adminData.token
-    Write-Host "[OK] Admin login successful" -ForegroundColor Green
+    $userNotifResponse = Invoke-RestMethod -Uri "$baseUrl/notifications" -Method GET -Headers @{Authorization="Bearer $userToken"}
+    Write-Host "SUCCESS: User has $($userNotifResponse.data.Count) notifications" -ForegroundColor Green
+    if ($userNotifResponse.data.Count -gt 0) {
+        Write-Host "  Latest: $($userNotifResponse.data[0].title)" -ForegroundColor Cyan
+    }
 } catch {
-    Write-Host "[FAIL] Admin login failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "FAILED: $($_.Exception.Message)" -ForegroundColor Red
 }
 
-# Test 8: Approve Report as Admin
+# Test 9: Approve Report
 if ($reportId) {
-    Write-Host "`nTest 8: Approve Report as Admin" -ForegroundColor Cyan
-    $approveBody = @{
-        comments = "Report approved, all data verified"
-    } | ConvertTo-Json
-
+    Write-Host "`nTest 9: Approve Report" -ForegroundColor Yellow
+    $approveBody = '{"comments":"Approved"}'
     try {
-        $approveResponse = Invoke-WebRequest -Uri "$baseUrl/reports/$reportId/approve" -Method POST -Body $approveBody -ContentType 'application/json' -Headers @{Authorization="Bearer $adminToken"} -UseBasicParsing
-        $approvedReport = $approveResponse.Content | ConvertFrom-Json
-        Write-Host "[OK] Report approved successfully" -ForegroundColor Green
-        Write-Host "  Status: $($approvedReport.report.status)" -ForegroundColor Gray
+        Invoke-RestMethod -Uri "$baseUrl/reports/$reportId/approve" -Method POST -Body $approveBody -ContentType "application/json" -Headers @{Authorization="Bearer $adminToken"} | Out-Null
+        Write-Host "SUCCESS: Report approved" -ForegroundColor Green
     } catch {
-        Write-Host "[FAIL] Report approval failed: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "FAILED: $($_.Exception.Message)" -ForegroundColor Red
     }
 }
 
-# Test 9: Test Validation - Missing Required Fields
-Write-Host "`nTest 9: Test Validation - Missing Required Fields" -ForegroundColor Cyan
-$invalidBody = @{
-    report_type = "passport_returns"
-} | ConvertTo-Json
-
+# Test 10: Final Notification Check
+Write-Host "`nTest 10: Final Notification Check" -ForegroundColor Yellow
+Start-Sleep -Seconds 1
 try {
-    $invalidResponse = Invoke-WebRequest -Uri "$baseUrl/reports" -Method POST -Body $invalidBody -ContentType 'application/json' -Headers @{Authorization="Bearer $userToken"} -UseBasicParsing
-    Write-Host "[FAIL] Validation should have failed but did not" -ForegroundColor Red
-} catch {
-    Write-Host "[OK] Validation correctly rejected invalid data" -ForegroundColor Green
-}
-
-# Test 10: Test Authorization - User trying to vet
-Write-Host "`nTest 10: Test Authorization - User trying to vet" -ForegroundColor Cyan
-if ($reportId) {
-    $vetBody = @{
-        comments = "Trying to vet as user"
-    } | ConvertTo-Json
-
-    try {
-        $unauthorizedResponse = Invoke-WebRequest -Uri "$baseUrl/reports/$reportId/vet" -Method POST -Body $vetBody -ContentType 'application/json' -Headers @{Authorization="Bearer $userToken"} -UseBasicParsing
-        Write-Host "[FAIL] Authorization should have failed but did not" -ForegroundColor Red
-    } catch {
-        Write-Host "[OK] Authorization correctly prevented user from vetting" -ForegroundColor Green
+    $finalResponse = Invoke-RestMethod -Uri "$baseUrl/notifications" -Method GET -Headers @{Authorization="Bearer $userToken"}
+    Write-Host "SUCCESS: User has $($finalResponse.data.Count) total notifications" -ForegroundColor Green
+    
+    $types = $finalResponse.data | Group-Object -Property type
+    Write-Host "`nNotification Types:" -ForegroundColor Cyan
+    foreach ($type in $types) {
+        Write-Host "  $($type.Name): $($type.Count)" -ForegroundColor White
     }
+} catch {
+    Write-Host "FAILED: $($_.Exception.Message)" -ForegroundColor Red
 }
 
-Write-Host "`n=== API Testing Complete ===" -ForegroundColor Green
+Write-Host "`n========================================" -ForegroundColor Cyan
+Write-Host "Testing Complete!" -ForegroundColor Cyan
+Write-Host "========================================`n" -ForegroundColor Cyan

@@ -85,13 +85,17 @@ export default function UserManagementPage() {
         headers: { Authorization: `Bearer ${token}` },
       })
       
-      if (!response.ok) throw new Error("Failed to fetch users")
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || "Failed to fetch users")
+      }
       
       const data = await response.json()
+      // Laravel pagination returns { data: [...], current_page, per_page, etc }
       setUsers(data.data || [])
     } catch (error) {
       console.error("Error fetching users:", error)
-      toast.error("Failed to load users")
+      toast.error(error instanceof Error ? error.message : "Failed to load users")
     } finally {
       setLoading(false)
     }

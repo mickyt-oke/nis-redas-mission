@@ -48,5 +48,8 @@ class DatabaseSeeder extends Seeder
 
         // Seed missions
         $this->call(MissionSeeder::class);
+
+        // Seed mission staff
+        $this->call(MissionStaffSeeder::class);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Report;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use App\Http\Controllers\NotificationController;
 
 class ReportController extends Controller
 {
@@ -116,6 +117,9 @@ class ReportController extends Controller
                 'remarks' => $request->remarks,
                 'status' => 'pending',
             ]);
+
+            // Send notification to supervisors
+            NotificationController::notifyReportStatusChange($report, 'submitted', $request->user());
 
             return response()->json([
                 'message' => 'Report submitted successfully',
@@ -280,6 +284,9 @@ class ReportController extends Controller
                 'vet_comments' => $request->comments,
             ]);
 
+            // Send notifications
+            NotificationController::notifyReportStatusChange($report, 'vetted', $request->user());
+
             return response()->json([
                 'message' => 'Report vetted successfully',
                 'report' => $report->load(['user', 'vetter', 'approver'])
@@ -330,6 +337,9 @@ class ReportController extends Controller
                 'approved_at' => now(),
                 'approval_comments' => $request->comments,
             ]);
+
+            // Send notification
+            NotificationController::notifyReportStatusChange($report, 'approved', $request->user());
 
             return response()->json([
                 'message' => 'Report approved successfully',
@@ -393,6 +403,9 @@ class ReportController extends Controller
             }
 
             $report->update($updateData);
+
+            // Send notification
+            NotificationController::notifyReportStatusChange($report, 'rejected', $request->user());
 
             return response()->json([
                 'message' => 'Report rejected',
