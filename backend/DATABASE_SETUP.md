@@ -63,7 +63,7 @@ php artisan migrate:fresh --seed
 After seeding, you'll have the following test users available:
 
 | Role | Email | Password | First Name | Last Name |
-|------|-------|----------|------------|-----------|
+| --- | --- | --- | --- | --- |
 | Super Admin | <super_admin@example.com> | password | Super | Admin |
 | Admin | <admin@example.com> | password | Admin | User |
 | Supervisor | <supervisor@example.com> | password | Supervisor | User |

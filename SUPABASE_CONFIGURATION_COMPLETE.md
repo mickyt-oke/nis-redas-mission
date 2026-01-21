@@ -7,7 +7,9 @@ The project has been successfully configured to connect to the remote Supabase d
 ## ✅ What Was Done
 
 ### 1. Backend Configuration (`backend/.env`)
+
 Updated the Laravel backend environment file with:
+
 - **Database Connection**: PostgreSQL via Supabase
 - **Host**: db.gmgfdnpiuylxsguitohb.supabase.co
 - **Database**: postgres
@@ -18,19 +20,22 @@ Updated the Laravel backend environment file with:
 - **Supabase Keys**: ANON_KEY, SERVICE_ROLE_KEY, JWT_SECRET
 
 ### 2. Frontend Configuration (`.env.local`)
+
 Created new environment file with:
-- **API URL**: http://localhost:8000 (Laravel backend)
-- **Supabase URL**: https://gmgfdnpiuylxsguitohb.supabase.co
+
+- **API URL**: <http://localhost:8000> (Laravel backend)
+- **Supabase URL**: <https://gmgfdnpiuylxsguitohb.supabase.co>
 - **Supabase Anon Key**: For client-side operations
 - **Supabase Service Role Key**: For server-side operations
 
 ### 3. Backup Created
+
 - Original configuration backed up to: `backend/.env.backup`
 
 ## ✅ Connection Verified
 
 Database connection test successful:
-```
+
 PostgreSQL: 17.6
 Connection: pgsql
 Database: postgres
@@ -39,17 +44,19 @@ Port: 5432
 Username: postgres.gmgfdnpiuylxsguitohb
 Tables: 33 (existing tables in Supabase)
 Open Connections: 12
-```
 
 ## 📋 Next Steps
 
 ### Option 1: Use Existing Supabase Tables
+
 If you want to use the existing 33 tables in your Supabase database:
+
 1. Review the existing schema
 2. Update Laravel models to match existing tables
 3. Skip running migrations
 
 ### Option 2: Create New Laravel Tables
+
 If you want to create fresh Laravel tables:
 
 ⚠️ **WARNING**: This will create new tables. Make sure you don't overwrite important data!
@@ -68,6 +75,7 @@ php artisan db:seed
 ```
 
 ### Option 3: Fresh Start (Development Only)
+
 ⚠️ **DANGER**: This will DROP ALL TABLES and recreate them!
 
 ```bash
@@ -78,22 +86,27 @@ php artisan migrate:fresh --seed
 ## 🚀 Running the Application
 
 ### Start Backend (Laravel)
+
 ```bash
 cd backend
 php artisan serve
 ```
-Backend will run on: http://localhost:8000
+
+Backend will run on: <http://localhost:8000>
 
 ### Start Frontend (Next.js)
+
 ```bash
 # From root directory
 pnpm dev
 ```
-Frontend will run on: http://localhost:3000
+
+Frontend will run on: <http://localhost:3000>
 
 ## 🔧 Configuration Files Updated
 
 ### Backend Environment (`backend/.env`)
+
 ```env
 DB_CONNECTION=pgsql
 DB_HOST=db.gmgfdnpiuylxsguitohb.supabase.co
@@ -112,6 +125,7 @@ SUPABASE_JWT_SECRET=wDCQ61y52EejqQfksNU7p8Hsgfj40avu7q7W4EGLYTGgvvOOyH9OYM8ZI1kk
 ```
 
 ### Frontend Environment (`.env.local`)
+
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_SUPABASE_URL=https://gmgfdnpiuylxsguitohb.supabase.co
@@ -121,7 +135,6 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhY
 
 ## 🏗️ Architecture
 
-```
 ┌─────────────────┐
 │   Next.js App   │
 │  (Frontend)     │
@@ -144,7 +157,6 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhY
 │   (Remote)      │
 │  33 Tables      │
 └─────────────────┘
-```
 
 ## 🔒 Security Notes
 
@@ -187,6 +199,7 @@ pnpm dev
 ## 🐛 Troubleshooting
 
 ### Database Connection Issues
+
 ```bash
 # Clear Laravel config cache
 cd backend
@@ -198,6 +211,7 @@ php artisan db:show
 ```
 
 ### Frontend Issues
+
 ```bash
 # Restart dev server to load new .env.local
 # Press Ctrl+C to stop, then:
@@ -205,6 +219,7 @@ pnpm dev
 ```
 
 ### Migration Issues
+
 - Use `DB_URL_NON_POOLING` for migrations if pooling causes issues
 - Ensure proper database permissions
 - Check Supabase dashboard for connection limits
@@ -218,6 +233,7 @@ pnpm dev
 ## ✅ Status: READY TO USE
 
 Your application is now configured to use the remote Supabase database. You can:
+
 1. Start the Laravel backend
 2. Start the Next.js frontend
 3. Begin development with remote database access
