@@ -1,12 +1,16 @@
 "use client"
 
+import { Suspense } from "react"
 import ProtectedRoute from "@/components/ProtectedRoute"
-import AdminDashboard from "@/components/pages/dashboards/AdminDashboard"
+import { LazyAdminDashboard } from "@/components/lazy"
+import { PageLoader } from "@/components/ui/spinner"
 
 export default function Page() {
   return (
-    <ProtectedRoute requiredRole="admin">
-      <AdminDashboard />
+    <ProtectedRoute requiredRole={["admin"]}>
+      <Suspense fallback={<PageLoader message="Loading dashboard..." />}>
+        <LazyAdminDashboard />
+      </Suspense>
     </ProtectedRoute>
   )
 }

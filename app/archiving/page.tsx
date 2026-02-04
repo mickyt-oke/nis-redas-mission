@@ -1,12 +1,16 @@
 "use client"
 
+import { Suspense } from "react"
 import ProtectedRoute from "@/components/ProtectedRoute"
-import ArchivingPage from "@/components/pages/ArchivingPage"
+import { LazyArchivingPage } from "@/components/lazy"
+import { PageLoader } from "@/components/ui/spinner"
 
 export default function Page() {
   return (
     <ProtectedRoute>
-      <ArchivingPage />
+      <Suspense fallback={<PageLoader message="Loading archiving..." />}>
+        <LazyArchivingPage />
+      </Suspense>
     </ProtectedRoute>
   )
 }

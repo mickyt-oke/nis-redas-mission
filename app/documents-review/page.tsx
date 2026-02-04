@@ -1,12 +1,16 @@
 "use client"
 
+import { Suspense } from "react"
 import ProtectedRoute from "@/components/ProtectedRoute"
-import DocumentsReviewPage from "@/components/pages/DocumentsReviewPage"
+import { LazyDocumentsReviewPage } from "@/components/lazy"
+import { PageLoader } from "@/components/ui/spinner"
 
 export default function Page() {
   return (
     <ProtectedRoute>
-      <DocumentsReviewPage />
+      <Suspense fallback={<PageLoader message="Loading documents..." />}>
+        <LazyDocumentsReviewPage />
+      </Suspense>
     </ProtectedRoute>
   )
 }

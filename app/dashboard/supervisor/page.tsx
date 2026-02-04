@@ -1,12 +1,16 @@
 "use client"
 
+import { Suspense } from "react"
 import ProtectedRoute from "@/components/ProtectedRoute"
-import SupervisorDashboard from "@/components/pages/dashboards/SupervisorDashboard"
+import { LazySupervisorDashboard } from "@/components/lazy"
+import { PageLoader } from "@/components/ui/spinner"
 
 export default function Page() {
   return (
     <ProtectedRoute requiredRole="supervisor">
-      <SupervisorDashboard />
+      <Suspense fallback={<PageLoader message="Loading dashboard..." />}>
+        <LazySupervisorDashboard />
+      </Suspense>
     </ProtectedRoute>
   )
 }

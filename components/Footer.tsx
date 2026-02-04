@@ -6,7 +6,7 @@ export default function Footer() {
   return (
     <footer className="bg-gray-900 text-gray-300 mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+        {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           <div>
             <h3 className="text-white font-bold mb-4">REDAS | MISSIONS</h3>
             <p className="text-sm text-gray-400">
@@ -61,20 +61,20 @@ export default function Footer() {
               Phone: +234 (0) 909 000 0000
             </p>
           </div>
-        </div>
+        </div> */}
 
         <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-sm text-gray-400">
             &copy; {currentYear} Nigeria Immigration Service. All rights reserved.
           </p>
-          <div className="flex gap-4 mt-4 md:mt-0 text-sm">
+          {/* <div className="flex gap-4 mt-4 md:mt-0 text-sm">
             <a href="#" className="text-gray-400 hover:text-[#1b7b3c] transition">
               Privacy Policy
             </a>
             <a href="#" className="text-gray-400 hover:text-[#1b7b3c] transition">
               Terms of Service
             </a>
-          </div>
+          </div> */}
         </div>
       </div>
     </footer>

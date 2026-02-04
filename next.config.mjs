@@ -20,11 +20,8 @@ const nextConfig = {
   // Production optimizations
   productionBrowserSourceMaps: false,
   
-  // Optimize fonts
-  optimizeFonts: true,
-  
-  // Enable SWC minification
-  swcMinify: true,
+  // Empty turbopack config to silence the webpack warning
+  turbopack: {},
   
   // Headers for caching
   async headers() {
