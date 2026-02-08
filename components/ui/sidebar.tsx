@@ -34,6 +34,8 @@ type SidebarContext = {
   setOpenMobile: (open: boolean) => void
   isMobile: boolean
   toggleSidebar: () => void
+  fullScreen: boolean
+  setFullScreen: (fullScreen: boolean) => void
 }
 
 const SidebarContext = React.createContext<SidebarContext | null>(null)
@@ -69,6 +71,7 @@ const SidebarProvider = React.forwardRef<
   ) => {
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
+    const [fullScreen, setFullScreen] = React.useState(false)
 
     // This is the internal state of the sidebar.
     // We use openProp and setOpenProp for control from outside the component.
@@ -125,6 +128,8 @@ const SidebarProvider = React.forwardRef<
         openMobile,
         setOpenMobile,
         toggleSidebar,
+        fullScreen,
+        setFullScreen,
       }),
       [
         state,
@@ -134,6 +139,8 @@ const SidebarProvider = React.forwardRef<
         openMobile,
         setOpenMobile,
         toggleSidebar,
+        fullScreen,
+        setFullScreen,
       ],
     )
 
@@ -326,12 +333,14 @@ const SidebarInset = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<'main'>
 >(({ className, ...props }, ref) => {
+  const { fullScreen } = useSidebar()
   return (
     <main
       ref={ref}
       className={cn(
         'relative flex min-h-svh flex-1 flex-col bg-background',
         'peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))] md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow',
+        fullScreen && 'md:ml-0', // Remove left margin when in fullscreen
         className,
       )}
       {...props}

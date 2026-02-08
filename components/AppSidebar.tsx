@@ -20,6 +20,10 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Maximize,
+  Minimize,
+  Moon,
+  Sun,
 } from "lucide-react"
 import {
   Sidebar,
@@ -45,16 +49,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu"
+import { useTheme } from "next-themes"
 
 export function AppSidebar() {
   const { user, logout } = useAuth()
   const pathname = usePathname()
   const router = useRouter()
-  const { state } = useSidebar()
+  const { state, fullScreen, setFullScreen, setOpen } = useSidebar()
+  const { theme, setTheme } = useTheme()
 
   const handleLogout = () => {
     logout()
     router.push("/")
+  }
+
+  const toggleFullScreen = () => {
+    setFullScreen(!fullScreen)
+    setOpen(fullScreen) // If going fullscreen, close sidebar. If exiting fullscreen, open sidebar.
   }
 
   const getDashboardLink = () => {
@@ -73,8 +84,8 @@ export function AppSidebar() {
 
   // Navigation items based on user role
   const getNavigationItems = () => {
-    const publicItems = [
-      { title: "Home", icon: Home, url: "/" },
+    const publicItems: Array<{ title: string; icon: any; url: string }> = [
+      // { title: "Home", icon: Home, url: "/" },
       // { title: "About", icon: Info, url: "/about" },
       // { title: "Services", icon: Briefcase, url: "/services" },
     ]
@@ -170,6 +181,12 @@ export function AppSidebar() {
 
       <SidebarFooter>
         <SidebarMenu>
+          {/* <SidebarMenuItem>
+            <SidebarMenuButton onClick={toggleFullScreen} tooltip={fullScreen ? "Exit Fullscreen" : "Fullscreen"}>
+              {fullScreen ? <Minimize /> : <Maximize />}
+              <span>{fullScreen ? "Exit Fullscreen" : "Fullscreen"}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem> */}
           <SidebarMenuItem>
             {user ? (
               <DropdownMenu>
@@ -230,6 +247,15 @@ export function AppSidebar() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+                    {theme === "dark" ? (
+                      <Sun className="mr-2 h-4 w-4" />
+                    ) : (
+                      <Moon className="mr-2 h-4 w-4" />
+                    )}
+                    Toggle Theme
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-red-600">
                     <LogOut className="mr-2 h-4 w-4" />
                     Log out
@@ -241,9 +267,9 @@ export function AppSidebar() {
                 <Button asChild size="sm" className="w-full">
                   <Link href="/login">Login</Link>
                 </Button>
-                <Button asChild size="sm" variant="outline" className="w-full">
+                {/* <Button asChild size="sm" variant="outline" className="w-full">
                   <Link href="/register">Register</Link>
-                </Button>
+                </Button> */}
               </div>
             )}
           </SidebarMenuItem>

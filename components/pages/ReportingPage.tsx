@@ -21,17 +21,26 @@ import {
   AlertCircle,
   Printer,
   Download,
+  Book,
+  Users as UsersIcon, // Renamed to avoid conflict with User from lucide-react
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs"
+import { Label } from "../ui/label"
+import { Input } from "../ui/input"
+import { Textarea } from "../ui/textarea"
+import { Button } from "../ui/button"
 
-interface Report {
+export type ReportType = "passport_returns" | "visa_returns" | "staff_nominal_roll"
+export type PassportType = "32pages" | "64pages"
+export type VisaType = "diplomatic" | "business" | "str" | "tourist" | "official" | "transit" | "twp"
+
+export interface Report {
   id: number
-  report_type: "passport_returns" | "visa_returns"
+  report_type: ReportType
   interval_type: "daily" | "monthly" | "quarterly"
   report_date: string
-  passport_count: number | null
-  visa_count: number | null
   remarks: string | null
   status: "pending" | "vetted" | "approved" | "rejected"
   vet_comments: string | null
@@ -56,6 +65,53 @@ interface Report {
   status_label: string
   interval_label: string
   report_type_label: string
+
+  // Passport Returns Fields
+  passport_32_issued?: number | null
+  passport_32_damaged?: number | null
+  passport_32_revenue?: number | null
+  passport_32_balance?: number | null
+  passport_64_issued?: number | null
+  passport_64_damaged?: number | null
+  passport_64_revenue?: number | null
+  passport_64_balance?: number | null
+
+  // Visa Returns Fields
+  visa_diplomatic_issued?: number | null
+  visa_diplomatic_damaged?: number | null
+  visa_diplomatic_revenue?: number | null
+  visa_diplomatic_balance?: number | null
+  visa_business_issued?: number | null
+  visa_business_damaged?: number | null
+  visa_business_revenue?: number | null
+  visa_business_balance?: number | null
+  visa_str_issued?: number | null
+  visa_str_damaged?: number | null
+  visa_str_revenue?: number | null
+  visa_str_balance?: number | null
+  visa_tourist_issued?: number | null
+  visa_tourist_damaged?: number | null
+  visa_tourist_revenue?: number | null
+  visa_tourist_balance?: number | null
+  visa_official_issued?: number | null
+  visa_official_damaged?: number | null
+  visa_official_revenue?: number | null
+  visa_official_balance?: number | null
+  visa_transit_issued?: number | null
+  visa_transit_damaged?: number | null
+  visa_transit_revenue?: number | null
+  visa_transit_balance?: number | null
+  visa_twp_issued?: number | null
+  visa_twp_damaged?: number | null
+  visa_twp_revenue?: number | null
+  visa_twp_balance?: number | null
+
+  // Staff Nominal Roll Fields
+  staff_total?: number | null
+  staff_male?: number | null
+  staff_female?: number | null
+  staff_on_leave?: number | null
+  staff_on_secondment?: number | null
 }
 
 interface Statistics {
@@ -72,7 +128,14 @@ interface Statistics {
   by_type: {
     passport_returns: number
     visa_returns: number
+    staff_nominal_roll: number
   }
+  // Add specific counters for passport and visa types if needed for dashboard
+  passport_32_total_issued?: number
+  passport_64_total_issued?: number
+  visa_diplomatic_total_issued?: number
+  visa_business_total_issued?: number
+  // ... other specific counters
 }
 
 export default function ReportingPage() {
@@ -85,7 +148,7 @@ export default function ReportingPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [filterStatus, setFilterStatus] = useState<string>("all")
   const [filterInterval, setFilterInterval] = useState<string>("all")
-  const [filterType, setFilterType] = useState<string>("all")
+  const [filterType, setFilterType] = useState<ReportType | "all">("all")
   
   // Pagination for admin view
   const [currentPage, setCurrentPage] = useState(1)
@@ -94,13 +157,57 @@ export default function ReportingPage() {
   // Form state
   const [showForm, setShowForm] = useState(false)
   const [editingReport, setEditingReport] = useState<Report | null>(null)
-  const [formData, setFormData] = useState({
+  const [activeTab, setActiveTab] = useState<ReportType>("passport_returns") // For new report form tabs
+
+  const [formData, setFormData] = useState<Partial<Report>>({
     report_type: "passport_returns",
     interval_type: "daily",
     report_date: new Date().toISOString().split("T")[0],
-    passport_count: "",
-    visa_count: "",
     remarks: "",
+    // Passport fields
+    passport_32_issued: null,
+    passport_32_damaged: null,
+    passport_32_revenue: null,
+    passport_32_balance: null,
+    passport_64_issued: null,
+    passport_64_damaged: null,
+    passport_64_revenue: null,
+    passport_64_balance: null,
+    // Visa fields
+    visa_diplomatic_issued: null,
+    visa_diplomatic_damaged: null,
+    visa_diplomatic_revenue: null,
+    visa_diplomatic_balance: null,
+    visa_business_issued: null,
+    visa_business_damaged: null,
+    visa_business_revenue: null,
+    visa_business_balance: null,
+    visa_str_issued: null,
+    visa_str_damaged: null,
+    visa_str_revenue: null,
+    visa_str_balance: null,
+    visa_tourist_issued: null,
+    visa_tourist_damaged: null,
+    visa_tourist_revenue: null,
+    visa_tourist_balance: null,
+    visa_official_issued: null,
+    visa_official_damaged: null,
+    visa_official_revenue: null,
+    visa_official_balance: null,
+    visa_transit_issued: null,
+    visa_transit_damaged: null,
+    visa_transit_revenue: null,
+    visa_transit_balance: null,
+    visa_twp_issued: null,
+    visa_twp_damaged: null,
+    visa_twp_revenue: null,
+    visa_twp_balance: null,
+    // Staff Nominal Roll fields
+    staff_total: null,
+    staff_male: null,
+    staff_female: null,
+    staff_on_leave: null,
+    staff_on_secondment: null,
   })
   const [submitting, setSubmitting] = useState(false)
 
@@ -147,6 +254,11 @@ export default function ReportingPage() {
       if (filterInterval !== "all") params.append("interval_type", filterInterval)
       if (filterType !== "all") params.append("report_type", filterType)
       if (searchTerm) params.append("search", searchTerm)
+      // Add pagination parameters for admin view if needed
+      if (isAdmin) {
+        params.append("page", currentPage.toString())
+        params.append("limit", itemsPerPage.toString())
+      }
 
       if (params.toString()) url += `?${params.toString()}`
 
@@ -183,11 +295,7 @@ export default function ReportingPage() {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...formData,
-          passport_count: formData.passport_count ? parseInt(formData.passport_count) : null,
-          visa_count: formData.visa_count ? parseInt(formData.visa_count) : null,
-        }),
+        body: JSON.stringify(formData), // formData now directly matches the Report interface structure
       })
 
       if (response.ok) {
@@ -277,13 +385,56 @@ export default function ReportingPage() {
 
   const openEditForm = (report: Report) => {
     setEditingReport(report)
+    setActiveTab(report.report_type) // Set active tab for editing
     setFormData({
       report_type: report.report_type,
       interval_type: report.interval_type,
       report_date: report.report_date,
-      passport_count: report.passport_count?.toString() || "",
-      visa_count: report.visa_count?.toString() || "",
       remarks: report.remarks || "",
+      // Passport fields
+      passport_32_issued: report.passport_32_issued,
+      passport_32_damaged: report.passport_32_damaged,
+      passport_32_revenue: report.passport_32_revenue,
+      passport_32_balance: report.passport_32_balance,
+      passport_64_issued: report.passport_64_issued,
+      passport_64_damaged: report.passport_64_damaged,
+      passport_64_revenue: report.passport_64_revenue,
+      passport_64_balance: report.passport_64_balance,
+      // Visa fields
+      visa_diplomatic_issued: report.visa_diplomatic_issued,
+      visa_diplomatic_damaged: report.visa_diplomatic_damaged,
+      visa_diplomatic_revenue: report.visa_diplomatic_revenue,
+      visa_diplomatic_balance: report.visa_diplomatic_balance,
+      visa_business_issued: report.visa_business_issued,
+      visa_business_damaged: report.visa_business_damaged,
+      visa_business_revenue: report.visa_business_revenue,
+      visa_business_balance: report.visa_business_balance,
+      visa_str_issued: report.visa_str_issued,
+      visa_str_damaged: report.visa_str_damaged,
+      visa_str_revenue: report.visa_str_revenue,
+      visa_str_balance: report.visa_str_balance,
+      visa_tourist_issued: report.visa_tourist_issued,
+      visa_tourist_damaged: report.visa_tourist_damaged,
+      visa_tourist_revenue: report.visa_tourist_revenue,
+      visa_tourist_balance: report.visa_tourist_balance,
+      visa_official_issued: report.visa_official_issued,
+      visa_official_damaged: report.visa_official_damaged,
+      visa_official_revenue: report.visa_official_revenue,
+      visa_official_balance: report.visa_official_balance,
+      visa_transit_issued: report.visa_transit_issued,
+      visa_transit_damaged: report.visa_transit_damaged,
+      visa_transit_revenue: report.visa_transit_revenue,
+      visa_transit_balance: report.visa_transit_balance,
+      visa_twp_issued: report.visa_twp_issued,
+      visa_twp_damaged: report.visa_twp_damaged,
+      visa_twp_revenue: report.visa_twp_revenue,
+      visa_twp_balance: report.visa_twp_balance,
+      // Staff Nominal Roll fields
+      staff_total: report.staff_total,
+      staff_male: report.staff_male,
+      staff_female: report.staff_female,
+      staff_on_leave: report.staff_on_leave,
+      staff_on_secondment: report.staff_on_secondment,
     })
     setShowForm(true)
   }
@@ -293,11 +444,51 @@ export default function ReportingPage() {
       report_type: "passport_returns",
       interval_type: "daily",
       report_date: new Date().toISOString().split("T")[0],
-      passport_count: "",
-      visa_count: "",
       remarks: "",
+      passport_32_issued: null,
+      passport_32_damaged: null,
+      passport_32_revenue: null,
+      passport_32_balance: null,
+      passport_64_issued: null,
+      passport_64_damaged: null,
+      passport_64_revenue: null,
+      passport_64_balance: null,
+      visa_diplomatic_issued: null,
+      visa_diplomatic_damaged: null,
+      visa_diplomatic_revenue: null,
+      visa_diplomatic_balance: null,
+      visa_business_issued: null,
+      visa_business_damaged: null,
+      visa_business_revenue: null,
+      visa_business_balance: null,
+      visa_str_issued: null,
+      visa_str_damaged: null,
+      visa_str_revenue: null,
+      visa_str_balance: null,
+      visa_tourist_issued: null,
+      visa_tourist_damaged: null,
+      visa_tourist_revenue: null,
+      visa_tourist_balance: null,
+      visa_official_issued: null,
+      visa_official_damaged: null,
+      visa_official_revenue: null,
+      visa_official_balance: null,
+      visa_transit_issued: null,
+      visa_transit_damaged: null,
+      visa_transit_revenue: null,
+      visa_transit_balance: null,
+      visa_twp_issued: null,
+      visa_twp_damaged: null,
+      visa_twp_revenue: null,
+      visa_twp_balance: null,
+      staff_total: null,
+      staff_male: null,
+      staff_female: null,
+      staff_on_leave: null,
+      staff_on_secondment: null,
     })
     setEditingReport(null)
+    setActiveTab("passport_returns") // Reset to default tab
   }
 
   const openReviewModal = (report: Report, action: "vet" | "approve" | "reject") => {
@@ -318,18 +509,75 @@ export default function ReportingPage() {
 
   const handleGenerateReport = () => {
     // Generate CSV export
-    const headers = ["ID", "Type", "Interval", "Date", "Passport Count", "Visa Count", "Status", "Submitted By", "Remarks"]
-    const csvData = reports.map(report => [
-      report.id,
-      report.report_type_label,
-      report.interval_label,
-      new Date(report.report_date).toLocaleDateString(),
-      report.passport_count || "N/A",
-      report.visa_count || "N/A",
-      report.status_label,
-      `${report.user.first_name} ${report.user.last_name}`,
-      report.remarks || "N/A"
-    ])
+  const headers = [
+    "ID", "Type", "Interval", "Date", "Status", "Submitted By", "Remarks",
+    // Passport Fields
+    "Passport 32 Issued", "Passport 32 Damaged", "Passport 32 Revenue", "Passport 32 Balance",
+    "Passport 64 Issued", "Passport 64 Damaged", "Passport 64 Revenue", "Passport 64 Balance",
+    // Visa Fields
+    "Visa Diplomatic Issued", "Visa Diplomatic Damaged", "Visa Diplomatic Revenue", "Visa Diplomatic Balance",
+    "Visa Business Issued", "Visa Business Damaged", "Visa Business Revenue", "Visa Business Balance",
+    "Visa STR Issued", "Visa STR Damaged", "Visa STR Revenue", "Visa STR Balance",
+    "Visa Tourist Issued", "Visa Tourist Damaged", "Visa Tourist Revenue", "Visa Tourist Balance",
+    "Visa Official Issued", "Visa Official Damaged", "Visa Official Revenue", "Visa Official Balance",
+    "Visa Transit Issued", "Visa Transit Damaged", "Visa Transit Revenue", "Visa Transit Balance",
+    "Visa TWP Issued", "Visa TWP Damaged", "Visa TWP Revenue", "Visa TWP Balance",
+    // Staff Nominal Roll Fields
+    "Staff Total", "Staff Male", "Staff Female", "Staff On Leave", "Staff On Secondment",
+  ]
+  const csvData = reports.map(report => [
+    report.id,
+    report.report_type_label,
+    report.interval_label,
+    new Date(report.report_date).toLocaleDateString(),
+    report.status_label,
+    `${report.user.first_name} ${report.user.last_name}`,
+    report.remarks || "N/A",
+    // Passport Fields
+    report.passport_32_issued || "N/A",
+    report.passport_32_damaged || "N/A",
+    report.passport_32_revenue || "N/A",
+    report.passport_32_balance || "N/A",
+    report.passport_64_issued || "N/A",
+    report.passport_64_damaged || "N/A",
+    report.passport_64_revenue || "N/A",
+    report.passport_64_balance || "N/A",
+    // Visa Fields
+    report.visa_diplomatic_issued || "N/A",
+    report.visa_diplomatic_damaged || "N/A",
+    report.visa_diplomatic_revenue || "N/A",
+    report.visa_diplomatic_balance || "N/A",
+    report.visa_business_issued || "N/A",
+    report.visa_business_damaged || "N/A",
+    report.visa_business_revenue || "N/A",
+    report.visa_business_balance || "N/A",
+    report.visa_str_issued || "N/A",
+    report.visa_str_damaged || "N/A",
+    report.visa_str_revenue || "N/A",
+    report.visa_str_balance || "N/A",
+    report.visa_tourist_issued || "N/A",
+    report.visa_tourist_damaged || "N/A",
+    report.visa_tourist_revenue || "N/A",
+    report.visa_tourist_balance || "N/A",
+    report.visa_official_issued || "N/A",
+    report.visa_official_damaged || "N/A",
+    report.visa_official_revenue || "N/A",
+    report.visa_official_balance || "N/A",
+    report.visa_transit_issued || "N/A",
+    report.visa_transit_damaged || "N/A",
+    report.visa_transit_revenue || "N/A",
+    report.visa_transit_balance || "N/A",
+    report.visa_twp_issued || "N/A",
+    report.visa_twp_damaged || "N/A",
+    report.visa_twp_revenue || "N/A",
+    report.visa_twp_balance || "N/A",
+    // Staff Nominal Roll Fields
+    report.staff_total || "N/A",
+    report.staff_male || "N/A",
+    report.staff_female || "N/A",
+    report.staff_on_leave || "N/A",
+    report.staff_on_secondment || "N/A",
+  ])
 
     const csvContent = [
       headers.join(","),
@@ -446,8 +694,11 @@ export default function ReportingPage() {
                   <TableHead>Type</TableHead>
                   <TableHead>Interval</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead className="text-center">Passport</TableHead>
-                  <TableHead className="text-center">Visa</TableHead>
+                  <TableHead className="text-center">Passport 32</TableHead>
+                  <TableHead className="text-center">Passport 64</TableHead>
+                  <TableHead className="text-center">Visa Diplomatic</TableHead>
+                  <TableHead className="text-center">Visa Business</TableHead>
+                  <TableHead className="text-center">Staff Total</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Submitted By</TableHead>
                   <TableHead className="text-right print:hidden">Actions</TableHead>
@@ -465,10 +716,19 @@ export default function ReportingPage() {
                     </TableCell>
                     <TableCell>{new Date(report.report_date).toLocaleDateString()}</TableCell>
                     <TableCell className="text-center">
-                      {report.passport_count !== null ? report.passport_count : "-"}
+                      {report.passport_32_issued !== null ? report.passport_32_issued : "-"}
                     </TableCell>
                     <TableCell className="text-center">
-                      {report.visa_count !== null ? report.visa_count : "-"}
+                      {report.passport_64_issued !== null ? report.passport_64_issued : "-"}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {report.visa_diplomatic_issued !== null ? report.visa_diplomatic_issued : "-"}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {report.visa_business_issued !== null ? report.visa_business_issued : "-"}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {report.staff_total !== null ? report.staff_total : "-"}
                     </TableCell>
                     <TableCell>{getStatusBadge(report.status)}</TableCell>
                     <TableCell>
@@ -618,17 +878,53 @@ export default function ReportingPage() {
                         {new Date(report.report_date).toLocaleDateString()}
                       </p>
                     </div>
-                    {report.passport_count !== null && (
-                      <div>
-                        <p className="text-xs text-gray-500">Passport Returns</p>
-                        <p className="text-sm font-medium text-gray-900">{report.passport_count}</p>
-                      </div>
+                    {report.report_type === "passport_returns" && (
+                      <>
+                        {report.passport_32_issued !== null && (
+                          <div>
+                            <p className="text-xs text-gray-500">Passport 32 Issued</p>
+                            <p className="text-sm font-medium text-gray-900">{report.passport_32_issued}</p>
+                          </div>
+                        )}
+                        {report.passport_64_issued !== null && (
+                          <div>
+                            <p className="text-xs text-gray-500">Passport 64 Issued</p>
+                            <p className="text-sm font-medium text-gray-900">{report.passport_64_issued}</p>
+                          </div>
+                        )}
+                      </>
                     )}
-                    {report.visa_count !== null && (
-                      <div>
-                        <p className="text-xs text-gray-500">Visa Returns</p>
-                        <p className="text-sm font-medium text-gray-900">{report.visa_count}</p>
-                      </div>
+                    {report.report_type === "visa_returns" && (
+                      <>
+                        {report.visa_diplomatic_issued !== null && (
+                          <div>
+                            <p className="text-xs text-gray-500">Visa Diplomatic Issued</p>
+                            <p className="text-sm font-medium text-gray-900">{report.visa_diplomatic_issued}</p>
+                          </div>
+                        )}
+                        {report.visa_business_issued !== null && (
+                          <div>
+                            <p className="text-xs text-gray-500">Visa Business Issued</p>
+                            <p className="text-sm font-medium text-gray-900">{report.visa_business_issued}</p>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {report.report_type === "staff_nominal_roll" && (
+                      <>
+                        {report.staff_total !== null && (
+                          <div>
+                            <p className="text-xs text-gray-500">Total Staff</p>
+                            <p className="text-sm font-medium text-gray-900">{report.staff_total}</p>
+                          </div>
+                        )}
+                        {report.staff_male !== null && (
+                          <div>
+                            <p className="text-xs text-gray-500">Male Staff</p>
+                            <p className="text-sm font-medium text-gray-900">{report.staff_male}</p>
+                          </div>
+                        )}
+                      </>
                     )}
                     <div>
                       <p className="text-xs text-gray-500">Submitted</p>
@@ -770,50 +1066,50 @@ export default function ReportingPage() {
         {/* Statistics Cards */}
         {statistics && (
           <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="bg-white rounded-lg shadow-md p-6 dark:bg-gray-800">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Total Reports</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-1">{statistics.total}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Total Reports</p>
+                  <p className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1">{statistics.total}</p>
                 </div>
                 <FileText className="text-gray-400" size={40} />
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="bg-white rounded-lg shadow-md p-6 dark:bg-gray-800">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Pending</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Pending</p>
                   <p className="text-3xl font-bold text-yellow-600 mt-1">{statistics.pending}</p>
                 </div>
                 <Clock className="text-yellow-400" size={40} />
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="bg-white rounded-lg shadow-md p-6 dark:bg-gray-800">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Vetted</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Vetted</p>
                   <p className="text-3xl font-bold text-blue-600 mt-1">{statistics.vetted}</p>
                 </div>
                 <Eye className="text-blue-400" size={40} />
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="bg-white rounded-lg shadow-md p-6 dark:bg-gray-800">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Approved</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Approved</p>
                   <p className="text-3xl font-bold text-green-600 mt-1">{statistics.approved}</p>
                 </div>
                 <CheckCircle className="text-green-400" size={40} />
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="bg-white rounded-lg shadow-md p-6 dark:bg-gray-800">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Rejected</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Rejected</p>
                   <p className="text-3xl font-bold text-red-600 mt-1">{statistics.rejected}</p>
                 </div>
                 <XCircle className="text-red-400" size={40} />
@@ -823,31 +1119,34 @@ export default function ReportingPage() {
         )}
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6 print:hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6 print:hidden">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <Label htmlFor="search" className="mb-2">
                 <Search size={16} className="inline mr-1" />
                 Search
-              </label>
-              <input
+              </Label>
+              <Input
+                id="search"
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search remarks..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b7b3c] focus:border-transparent"
+                className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <Label htmlFor="status-filter" className="mb-2">
                 <Filter size={16} className="inline mr-1" />
                 Status
-              </label>
+              </Label>
               <select
+                id="status-filter"
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b7b3c] focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b7b3c] focus:border-transparent dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                aria-label="Filter by Status"
               >
                 <option value="all">All Status</option>
                 <option value="pending">Pending</option>
@@ -858,14 +1157,16 @@ export default function ReportingPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <Label htmlFor="interval-filter" className="mb-2">
                 <Filter size={16} className="inline mr-1" />
                 Interval
-              </label>
+              </Label>
               <select
+                id="interval-filter"
                 value={filterInterval}
                 onChange={(e) => setFilterInterval(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b7b3c] focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b7b3c] focus:border-transparent dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                aria-label="Filter by Interval"
               >
                 <option value="all">All Intervals</option>
                 <option value="daily">Daily</option>
@@ -875,18 +1176,21 @@ export default function ReportingPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <Label htmlFor="type-filter" className="mb-2">
                 <Filter size={16} className="inline mr-1" />
                 Type
-              </label>
+              </Label>
               <select
+                id="type-filter"
                 value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b7b3c] focus:border-transparent"
+                onChange={(e) => setFilterType(e.target.value as ReportType | "all")}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b7b3c] focus:border-transparent dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                aria-label="Filter by Report Type"
               >
                 <option value="all">All Types</option>
                 <option value="passport_returns">Passport Returns</option>
                 <option value="visa_returns">Visa Returns</option>
+                <option value="staff_nominal_roll">Staff Nominal Roll</option>
               </select>
             </div>
           </div>
@@ -899,126 +1203,503 @@ export default function ReportingPage() {
       {/* Submit/Edit Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
               {editingReport ? "Edit Report" : "Submit New Report"}
             </h2>
 
-            <form onSubmit={handleSubmitReport}>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Report Type <span className="text-red-600">*</span>
-                    </label>
-                    <select
-                      value={formData.report_type}
-                      onChange={(e) => setFormData({ ...formData, report_type: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b7b3c] focus:border-transparent"
-                      required
-                    >
-                      <option value="passport_returns">Passport Returns</option>
-                      <option value="visa_returns">Visa Returns</option>
-                    </select>
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ReportType)} className="mb-6">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="passport_returns">Passport Returns</TabsTrigger>
+                <TabsTrigger value="visa_returns">Visa Returns</TabsTrigger>
+                <TabsTrigger value="staff_nominal_roll">Staff Nominal Roll</TabsTrigger>
+              </TabsList>
+
+              <form onSubmit={handleSubmitReport}>
+                <TabsContent value="passport_returns" className="mt-4">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="report_date_passport">Report Date <span className="text-red-600">*</span></Label>
+                        <Input
+                          id="report_date_passport"
+                          type="date"
+                          value={formData.report_date}
+                          onChange={(e) => setFormData({ ...formData, report_date: e.target.value })}
+                          max={new Date().toISOString().split("T")[0]}
+                          required
+                          className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="interval_type_passport">Interval <span className="text-red-600">*</span></Label>
+                        <select
+                          id="interval_type_passport"
+                          value={formData.interval_type}
+                          onChange={(e) => setFormData({ ...formData, interval_type: e.target.value as "daily" | "monthly" | "quarterly" })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b7b3c] focus:border-transparent dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                          required
+                          aria-label="Report Interval Type"
+                        >
+                          <option value="daily">Daily</option>
+                          <option value="monthly">Monthly</option>
+                          <option value="quarterly">Quarterly</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-4">32 Pages Passport</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <Label htmlFor="passport_32_issued">Total Issued</Label>
+                        <Input
+                          id="passport_32_issued"
+                          type="number"
+                          min="0"
+                          value={formData.passport_32_issued ?? ""}
+                          onChange={(e) => setFormData({ ...formData, passport_32_issued: parseInt(e.target.value) || null })}
+                          className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="passport_32_damaged">Total Damaged</Label>
+                        <Input
+                          id="passport_32_damaged"
+                          type="number"
+                          min="0"
+                          value={formData.passport_32_damaged ?? ""}
+                          onChange={(e) => setFormData({ ...formData, passport_32_damaged: parseInt(e.target.value) || null })}
+                          className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="passport_32_revenue">Total Revenue</Label>
+                        <Input
+                          id="passport_32_revenue"
+                          type="number"
+                          min="0"
+                          value={formData.passport_32_revenue ?? ""}
+                          onChange={(e) => setFormData({ ...formData, passport_32_revenue: parseInt(e.target.value) || null })}
+                          className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="passport_32_balance">Balance in Stock</Label>
+                        <Input
+                          id="passport_32_balance"
+                          type="number"
+                          min="0"
+                          value={formData.passport_32_balance ?? ""}
+                          onChange={(e) => setFormData({ ...formData, passport_32_balance: parseInt(e.target.value) || null })}
+                          className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                        />
+                      </div>
+                    </div>
+
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-4">64 Pages Passport</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <Label htmlFor="passport_64_issued">Total Issued</Label>
+                        <Input
+                          id="passport_64_issued"
+                          type="number"
+                          min="0"
+                          value={formData.passport_64_issued ?? ""}
+                          onChange={(e) => setFormData({ ...formData, passport_64_issued: parseInt(e.target.value) || null })}
+                          className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="passport_64_damaged">Total Damaged</Label>
+                        <Input
+                          id="passport_64_damaged"
+                          type="number"
+                          min="0"
+                          value={formData.passport_64_damaged ?? ""}
+                          onChange={(e) => setFormData({ ...formData, passport_64_damaged: parseInt(e.target.value) || null })}
+                          className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="passport_64_revenue">Total Revenue</Label>
+                        <Input
+                          id="passport_64_revenue"
+                          type="number"
+                          min="0"
+                          value={formData.passport_64_revenue ?? ""}
+                          onChange={(e) => setFormData({ ...formData, passport_64_revenue: parseInt(e.target.value) || null })}
+                          className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="passport_64_balance">Balance in Stock</Label>
+                        <Input
+                          id="passport_64_balance"
+                          type="number"
+                          min="0"
+                          value={formData.passport_64_balance ?? ""}
+                          onChange={(e) => setFormData({ ...formData, passport_64_balance: parseInt(e.target.value) || null })}
+                          className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-start gap-2 dark:bg-yellow-950 dark:border-yellow-700 mt-6">
+                      <AlertCircle className="text-yellow-600 flex-shrink-0 mt-0.5" size={18} />
+                      <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                        At least one passport field must be provided.
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="remarks_passport" className="mt-4">Remarks</Label>
+                      <Textarea
+                        id="remarks_passport"
+                        value={formData.remarks ?? ""}
+                        onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+                        rows={4}
+                        placeholder="Add any additional remarks or notes..."
+                        className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                      />
+                    </div>
                   </div>
+                </TabsContent>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Interval <span className="text-red-600">*</span>
-                    </label>
-                    <select
-                      value={formData.interval_type}
-                      onChange={(e) => setFormData({ ...formData, interval_type: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b7b3c] focus:border-transparent"
-                      required
-                    >
-                      <option value="daily">Daily</option>
-                      <option value="monthly">Monthly</option>
-                      <option value="quarterly">Quarterly</option>
-                    </select>
+                <TabsContent value="visa_returns" className="mt-4">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="report_date_visa">Report Date <span className="text-red-600">*</span></Label>
+                        <Input
+                          id="report_date_visa"
+                          type="date"
+                          value={formData.report_date}
+                          onChange={(e) => setFormData({ ...formData, report_date: e.target.value })}
+                          max={new Date().toISOString().split("T")[0]}
+                          required
+                          className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="interval_type_visa">Interval <span className="text-red-600">*</span></Label>
+                        <select
+                          id="interval_type_visa"
+                          value={formData.interval_type}
+                          onChange={(e) => setFormData({ ...formData, interval_type: e.target.value as "daily" | "monthly" | "quarterly" })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b7b3c] focus:border-transparent dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                          required
+                          aria-label="Report Interval Type"
+                        >
+                          <option value="daily">Daily</option>
+                          <option value="monthly">Monthly</option>
+                          <option value="quarterly">Quarterly</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Diplomatic Visa */}
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-4">Diplomatic Visa</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <Label htmlFor="visa_diplomatic_issued">Total Issued</Label>
+                        <Input id="visa_diplomatic_issued" type="number" min="0" value={formData.visa_diplomatic_issued ?? ""} onChange={(e) => setFormData({ ...formData, visa_diplomatic_issued: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                      <div>
+                        <Label htmlFor="visa_diplomatic_damaged">Total Damaged</Label>
+                        <Input id="visa_diplomatic_damaged" type="number" min="0" value={formData.visa_diplomatic_damaged ?? ""} onChange={(e) => setFormData({ ...formData, visa_diplomatic_damaged: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                      <div>
+                        <Label htmlFor="visa_diplomatic_revenue">Total Revenue</Label>
+                        <Input id="visa_diplomatic_revenue" type="number" min="0" value={formData.visa_diplomatic_revenue ?? ""} onChange={(e) => setFormData({ ...formData, visa_diplomatic_revenue: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                      <div>
+                        <Label htmlFor="visa_diplomatic_balance">Balance in Stock</Label>
+                        <Input id="visa_diplomatic_balance" type="number" min="0" value={formData.visa_diplomatic_balance ?? ""} onChange={(e) => setFormData({ ...formData, visa_diplomatic_balance: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                    </div>
+
+                    {/* Business Visa */}
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-4">Business Visa</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <Label htmlFor="visa_business_issued">Total Issued</Label>
+                        <Input id="visa_business_issued" type="number" min="0" value={formData.visa_business_issued ?? ""} onChange={(e) => setFormData({ ...formData, visa_business_issued: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                      <div>
+                        <Label htmlFor="visa_business_damaged">Total Damaged</Label>
+                        <Input id="visa_business_damaged" type="number" min="0" value={formData.visa_business_damaged ?? ""} onChange={(e) => setFormData({ ...formData, visa_business_damaged: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                      <div>
+                        <Label htmlFor="visa_business_revenue">Total Revenue</Label>
+                        <Input id="visa_business_revenue" type="number" min="0" value={formData.visa_business_revenue ?? ""} onChange={(e) => setFormData({ ...formData, visa_business_revenue: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                      <div>
+                        <Label htmlFor="visa_business_balance">Balance in Stock</Label>
+                        <Input id="visa_business_balance" type="number" min="0" value={formData.visa_business_balance ?? ""} onChange={(e) => setFormData({ ...formData, visa_business_balance: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                    </div>
+
+                    {/* STR Visa */}
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-4">STR Visa</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <Label htmlFor="visa_str_issued">Total Issued</Label>
+                        <Input id="visa_str_issued" type="number" min="0" value={formData.visa_str_issued ?? ""} onChange={(e) => setFormData({ ...formData, visa_str_issued: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                      <div>
+                        <Label htmlFor="visa_str_damaged">Total Damaged</Label>
+                        <Input id="visa_str_damaged" type="number" min="0" value={formData.visa_str_damaged ?? ""} onChange={(e) => setFormData({ ...formData, visa_str_damaged: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                      <div>
+                        <Label htmlFor="visa_str_revenue">Total Revenue</Label>
+                        <Input id="visa_str_revenue" type="number" min="0" value={formData.visa_str_revenue ?? ""} onChange={(e) => setFormData({ ...formData, visa_str_revenue: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                      <div>
+                        <Label htmlFor="visa_str_balance">Balance in Stock</Label>
+                        <Input id="visa_str_balance" type="number" min="0" value={formData.visa_str_balance ?? ""} onChange={(e) => setFormData({ ...formData, visa_str_balance: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                    </div>
+
+                    {/* Tourist Visa */}
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-4">Tourist Visa</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <Label htmlFor="visa_tourist_issued">Total Issued</Label>
+                        <Input id="visa_tourist_issued" type="number" min="0" value={formData.visa_tourist_issued ?? ""} onChange={(e) => setFormData({ ...formData, visa_tourist_issued: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                      <div>
+                        <Label htmlFor="visa_tourist_damaged">Total Damaged</Label>
+                        <Input id="visa_tourist_damaged" type="number" min="0" value={formData.visa_tourist_damaged ?? ""} onChange={(e) => setFormData({ ...formData, visa_tourist_damaged: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                      <div>
+                        <Label htmlFor="visa_tourist_revenue">Total Revenue</Label>
+                        <Input id="visa_tourist_revenue" type="number" min="0" value={formData.visa_tourist_revenue ?? ""} onChange={(e) => setFormData({ ...formData, visa_tourist_revenue: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                      <div>
+                        <Label htmlFor="visa_tourist_balance">Balance in Stock</Label>
+                        <Input id="visa_tourist_balance" type="number" min="0" value={formData.visa_tourist_balance ?? ""} onChange={(e) => setFormData({ ...formData, visa_tourist_balance: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                    </div>
+
+                    {/* Official Visa */}
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-4">Official Visa</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <Label htmlFor="visa_official_issued">Total Issued</Label>
+                        <Input id="visa_official_issued" type="number" min="0" value={formData.visa_official_issued ?? ""} onChange={(e) => setFormData({ ...formData, visa_official_issued: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                      <div>
+                        <Label htmlFor="visa_official_damaged">Total Damaged</Label>
+                        <Input id="visa_official_damaged" type="number" min="0" value={formData.visa_official_damaged ?? ""} onChange={(e) => setFormData({ ...formData, visa_official_damaged: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                      <div>
+                        <Label htmlFor="visa_official_revenue">Total Revenue</Label>
+                        <Input id="visa_official_revenue" type="number" min="0" value={formData.visa_official_revenue ?? ""} onChange={(e) => setFormData({ ...formData, visa_official_revenue: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                      <div>
+                        <Label htmlFor="visa_official_balance">Balance in Stock</Label>
+                        <Input id="visa_official_balance" type="number" min="0" value={formData.visa_official_balance ?? ""} onChange={(e) => setFormData({ ...formData, visa_official_balance: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                    </div>
+
+                    {/* Transit Visa */}
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-4">Transit Visa</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <Label htmlFor="visa_transit_issued">Total Issued</Label>
+                        <Input id="visa_transit_issued" type="number" min="0" value={formData.visa_transit_issued ?? ""} onChange={(e) => setFormData({ ...formData, visa_transit_issued: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                      <div>
+                        <Label htmlFor="visa_transit_damaged">Total Damaged</Label>
+                        <Input id="visa_transit_damaged" type="number" min="0" value={formData.visa_transit_damaged ?? ""} onChange={(e) => setFormData({ ...formData, visa_transit_damaged: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                      <div>
+                        <Label htmlFor="visa_transit_revenue">Total Revenue</Label>
+                        <Input id="visa_transit_revenue" type="number" min="0" value={formData.visa_transit_revenue ?? ""} onChange={(e) => setFormData({ ...formData, visa_transit_revenue: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                      <div>
+                        <Label htmlFor="visa_transit_balance">Balance in Stock</Label>
+                        <Input id="visa_transit_balance" type="number" min="0" value={formData.visa_transit_balance ?? ""} onChange={(e) => setFormData({ ...formData, visa_transit_balance: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                    </div>
+
+                    {/* TWP Visa */}
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-4">TWP Visa</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <Label htmlFor="visa_twp_issued">Total Issued</Label>
+                        <Input id="visa_twp_issued" type="number" min="0" value={formData.visa_twp_issued ?? ""} onChange={(e) => setFormData({ ...formData, visa_twp_issued: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                      <div>
+                        <Label htmlFor="visa_twp_damaged">Total Damaged</Label>
+                        <Input id="visa_twp_damaged" type="number" min="0" value={formData.visa_twp_damaged ?? ""} onChange={(e) => setFormData({ ...formData, visa_twp_damaged: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                      <div>
+                        <Label htmlFor="visa_twp_revenue">Total Revenue</Label>
+                        <Input id="visa_twp_revenue" type="number" min="0" value={formData.visa_twp_revenue ?? ""} onChange={(e) => setFormData({ ...formData, visa_twp_revenue: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                      <div>
+                        <Label htmlFor="visa_twp_balance">Balance in Stock</Label>
+                        <Input id="visa_twp_balance" type="number" min="0" value={formData.visa_twp_balance ?? ""} onChange={(e) => setFormData({ ...formData, visa_twp_balance: parseInt(e.target.value) || null })} className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+                      </div>
+                    </div>
+
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-start gap-2 dark:bg-yellow-950 dark:border-yellow-700 mt-6">
+                      <AlertCircle className="text-yellow-600 flex-shrink-0 mt-0.5" size={18} />
+                      <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                        At least one visa field must be provided.
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="remarks_visa" className="mt-4">Remarks</Label>
+                      <Textarea
+                        id="remarks_visa"
+                        value={formData.remarks ?? ""}
+                        onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+                        rows={4}
+                        placeholder="Add any additional remarks or notes..."
+                        className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                      />
+                    </div>
                   </div>
-                </div>
+                </TabsContent>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Report Date <span className="text-red-600">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.report_date}
-                    onChange={(e) => setFormData({ ...formData, report_date: e.target.value })}
-                    max={new Date().toISOString().split("T")[0]}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b7b3c] focus:border-transparent"
-                    required
-                  />
-                </div>
+                <TabsContent value="staff_nominal_roll" className="mt-4">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="report_date_staff">Report Date <span className="text-red-600">*</span></Label>
+                        <Input
+                          id="report_date_staff"
+                          type="date"
+                          value={formData.report_date}
+                          onChange={(e) => setFormData({ ...formData, report_date: e.target.value })}
+                          max={new Date().toISOString().split("T")[0]}
+                          required
+                          className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="interval_type_staff">Interval <span className="text-red-600">*</span></Label>
+                        <select
+                          id="interval_type_staff"
+                          value={formData.interval_type}
+                          onChange={(e) => setFormData({ ...formData, interval_type: e.target.value as "daily" | "monthly" | "quarterly" })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b7b3c] focus:border-transparent dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                          required
+                          aria-label="Report Interval Type"
+                        >
+                          <option value="daily">Daily</option>
+                          <option value="monthly">Monthly</option>
+                          <option value="quarterly">Quarterly</option>
+                        </select>
+                      </div>
+                    </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Passport Count</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.passport_count}
-                      onChange={(e) => setFormData({ ...formData, passport_count: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b7b3c] focus:border-transparent"
-                      placeholder="Enter count"
-                    />
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-4">Staff Details</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      <div>
+                        <Label htmlFor="staff_total">Total Staff</Label>
+                        <Input
+                          id="staff_total"
+                          type="number"
+                          min="0"
+                          value={formData.staff_total ?? ""}
+                          onChange={(e) => setFormData({ ...formData, staff_total: parseInt(e.target.value) || null })}
+                          className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="staff_male">Total Male Staff</Label>
+                        <Input
+                          id="staff_male"
+                          type="number"
+                          min="0"
+                          value={formData.staff_male ?? ""}
+                          onChange={(e) => setFormData({ ...formData, staff_male: parseInt(e.target.value) || null })}
+                          className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="staff_female">Total Female Staff</Label>
+                        <Input
+                          id="staff_female"
+                          type="number"
+                          min="0"
+                          value={formData.staff_female ?? ""}
+                          onChange={(e) => setFormData({ ...formData, staff_female: parseInt(e.target.value) || null })}
+                          className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="staff_on_leave">Staff On Leave</Label>
+                        <Input
+                          id="staff_on_leave"
+                          type="number"
+                          min="0"
+                          value={formData.staff_on_leave ?? ""}
+                          onChange={(e) => setFormData({ ...formData, staff_on_leave: parseInt(e.target.value) || null })}
+                          className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="staff_on_secondment">Staff On Secondment</Label>
+                        <Input
+                          id="staff_on_secondment"
+                          type="number"
+                          min="0"
+                          value={formData.staff_on_secondment ?? ""}
+                          onChange={(e) => setFormData({ ...formData, staff_on_secondment: parseInt(e.target.value) || null })}
+                          className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-start gap-2 dark:bg-yellow-950 dark:border-yellow-700 mt-6">
+                      <AlertCircle className="text-yellow-600 flex-shrink-0 mt-0.5" size={18} />
+                      <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                        At least one staff field must be provided.
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="remarks_staff" className="mt-4">Remarks</Label>
+                      <Textarea
+                        id="remarks_staff"
+                        value={formData.remarks ?? ""}
+                        onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+                        rows={4}
+                        placeholder="Add any additional remarks or notes..."
+                        className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                      />
+                    </div>
                   </div>
+                </TabsContent>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Visa Count</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.visa_count}
-                      onChange={(e) => setFormData({ ...formData, visa_count: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b7b3c] focus:border-transparent"
-                      placeholder="Enter count"
-                    />
-                  </div>
+                <div className="flex gap-4 mt-6">
+                  <Button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 px-6 py-3 bg-[#1b7b3c] text-white rounded-lg font-semibold hover:bg-[#155730] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {submitting ? "Submitting..." : editingReport ? "Update Report" : "Submit Report"}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setShowForm(false)
+                      resetForm()
+                    }}
+                    disabled={submitting}
+                    variant="outline"
+                    className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50 dark:text-gray-100 dark:border-gray-600 dark:hover:bg-gray-700"
+                  >
+                    Cancel
+                  </Button>
                 </div>
-
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-start gap-2">
-                  <AlertCircle className="text-yellow-600 flex-shrink-0 mt-0.5" size={18} />
-                  <p className="text-sm text-yellow-800">
-                    At least one count (Passport or Visa) must be provided
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Remarks</label>
-                  <textarea
-                    value={formData.remarks}
-                    onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b7b3c] focus:border-transparent"
-                    rows={4}
-                    placeholder="Add any additional remarks or notes..."
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-4 mt-6">
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 px-6 py-3 bg-[#1b7b3c] text-white rounded-lg font-semibold hover:bg-[#155730] transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {submitting ? "Submitting..." : editingReport ? "Update Report" : "Submit Report"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowForm(false)
-                    resetForm()
-                  }}
-                  disabled={submitting}
-                  className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+              </form>
+            </Tabs>
           </div>
         </div>
       )}
@@ -1114,39 +1795,240 @@ export default function ReportingPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-500">Report Type</p>
-                  <p className="text-base font-medium text-gray-900">{viewingReport.report_type_label}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Report Type</p>
+                  <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.report_type_label}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Interval</p>
-                  <p className="text-base font-medium text-gray-900">{viewingReport.interval_label}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Interval</p>
+                  <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.interval_label}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Report Date</p>
-                  <p className="text-base font-medium text-gray-900">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Report Date</p>
+                  <p className="text-base font-medium text-gray-900 dark:text-gray-100">
                     {new Date(viewingReport.report_date).toLocaleDateString()}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Status</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Status</p>
                   <div className="mt-1">{getStatusBadge(viewingReport.status)}</div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                {viewingReport.passport_count !== null && (
-                  <div>
-                    <p className="text-sm text-gray-500">Passport Returns</p>
-                    <p className="text-2xl font-bold text-gray-900">{viewingReport.passport_count}</p>
+              {viewingReport.report_type === "passport_returns" && (
+                <>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-4">32 Pages Passport</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Issued</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.passport_32_issued ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Damaged</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.passport_32_damaged ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Revenue</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.passport_32_revenue ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Balance in Stock</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.passport_32_balance ?? "-"}</p>
+                    </div>
                   </div>
-                )}
-                {viewingReport.visa_count !== null && (
-                  <div>
-                    <p className="text-sm text-gray-500">Visa Returns</p>
-                    <p className="text-2xl font-bold text-gray-900">{viewingReport.visa_count}</p>
+
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-4">64 Pages Passport</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Issued</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.passport_64_issued ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Damaged</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.passport_64_damaged ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Revenue</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.passport_64_revenue ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Balance in Stock</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.passport_64_balance ?? "-"}</p>
+                    </div>
                   </div>
-                )}
-              </div>
+                </>
+              )}
+
+              {viewingReport.report_type === "visa_returns" && (
+                <>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-4">Diplomatic Visa</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Issued</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_diplomatic_issued ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Damaged</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_diplomatic_damaged ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Revenue</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_diplomatic_revenue ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Balance in Stock</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_diplomatic_balance ?? "-"}</p>
+                    </div>
+                  </div>
+
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-4">Business Visa</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Issued</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_business_issued ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Damaged</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_business_damaged ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Revenue</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_business_revenue ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Balance in Stock</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_business_balance ?? "-"}</p>
+                    </div>
+                  </div>
+
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-4">STR Visa</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Issued</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_str_issued ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Damaged</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_str_damaged ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Revenue</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_str_revenue ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Balance in Stock</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_str_balance ?? "-"}</p>
+                    </div>
+                  </div>
+
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-4">Tourist Visa</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Issued</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_tourist_issued ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Damaged</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_tourist_damaged ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Revenue</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_tourist_revenue ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Balance in Stock</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_tourist_balance ?? "-"}</p>
+                    </div>
+                  </div>
+
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-4">Official Visa</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Issued</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_official_issued ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Damaged</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_official_damaged ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Revenue</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_official_revenue ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Balance in Stock</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_official_balance ?? "-"}</p>
+                    </div>
+                  </div>
+
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-4">Transit Visa</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Issued</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_transit_issued ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Damaged</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_transit_damaged ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Revenue</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_transit_revenue ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Balance in Stock</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_transit_balance ?? "-"}</p>
+                    </div>
+                  </div>
+
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-4">TWP Visa</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Issued</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_twp_issued ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Damaged</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_twp_damaged ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Revenue</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_twp_revenue ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Balance in Stock</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.visa_twp_balance ?? "-"}</p>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {viewingReport.report_type === "staff_nominal_roll" && (
+                <>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-4">Staff Details</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Staff</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.staff_total ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Male Staff</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.staff_male ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Female Staff</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.staff_female ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Staff On Leave</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.staff_on_leave ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Staff On Secondment</p>
+                      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{viewingReport.staff_on_secondment ?? "-"}</p>
+                    </div>
+                  </div>
+                </>
+              )}
 
               {viewingReport.remarks && (
                 <div>
@@ -1196,6 +2078,7 @@ export default function ReportingPage() {
               <button
                 onClick={() => setViewingReport(null)}
                 className="w-full px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
+                title="Close"
               >
                 Close
               </button>

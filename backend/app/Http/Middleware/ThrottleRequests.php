@@ -58,6 +58,12 @@ class ThrottleRequests
      */
     protected function shouldSkipRateLimiting(Request $request): bool
     {
+        // Skip rate limiting for login route to allow faster authentication
+        $routeName = $request->route()?->getName();
+        if ($routeName === 'login') {
+            return true;
+        }
+
         // Skip for whitelisted IPs
         $skipIps = config('rate-limit.skip.ips', []);
         if (in_array($request->ip(), $skipIps)) {

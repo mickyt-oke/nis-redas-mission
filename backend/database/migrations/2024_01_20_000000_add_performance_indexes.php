@@ -81,7 +81,7 @@ return new class extends Migration
 
         // Events table indexes
         if (Schema::hasTable('events')) {
-            $this->addIndexIfNotExists('events', 'created_by');
+            $this->addIndexIfNotExists('events', 'user_id');
             $this->addIndexIfNotExists('events', 'start_date');
             $this->addIndexIfNotExists('events', 'end_date');
             $this->addIndexIfNotExists('events', ['start_date', 'end_date']);
@@ -163,7 +163,7 @@ return new class extends Migration
 
         // Events table indexes
         if (Schema::hasTable('events')) {
-            $this->dropIndexIfExists('events', 'created_by');
+            $this->dropIndexIfExists('events', 'user_id');
             $this->dropIndexIfExists('events', 'start_date');
             $this->dropIndexIfExists('events', 'end_date');
             $this->dropIndexIfExists('events', ['start_date', 'end_date']);

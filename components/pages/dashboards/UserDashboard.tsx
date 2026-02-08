@@ -12,7 +12,8 @@ import {
   XCircle,
   AlertCircle,
   TrendingUp,
-  Calendar
+  Calendar,
+  Book, // Import Book icon
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs"
@@ -71,7 +72,19 @@ interface Statistics {
   by_type: {
     passport_returns: number
     visa_returns: number
+    staff_nominal_roll: number
   }
+  // Specific passport counts
+  passport_32_total_issued: number
+  passport_64_total_issued: number
+  // Specific visa counts (example, extend as needed)
+  visa_diplomatic_total_issued: number
+  visa_business_total_issued: number
+  visa_str_total_issued: number
+  visa_tourist_total_issued: number
+  visa_official_total_issued: number
+  visa_transit_total_issued: number
+  visa_twp_total_issued: number
 }
 
 export default function UserDashboard() {
@@ -84,7 +97,16 @@ export default function UserDashboard() {
     approved: 0,
     rejected: 0,
     by_interval: { daily: 0, monthly: 0, quarterly: 0 },
-    by_type: { passport_returns: 0, visa_returns: 0 },
+    by_type: { passport_returns: 0, visa_returns: 0, staff_nominal_roll: 0 },
+    passport_32_total_issued: 0,
+    passport_64_total_issued: 0,
+    visa_diplomatic_total_issued: 0,
+    visa_business_total_issued: 0,
+    visa_str_total_issued: 0,
+    visa_tourist_total_issued: 0,
+    visa_official_total_issued: 0,
+    visa_transit_total_issued: 0,
+    visa_twp_total_issued: 0,
   })
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(true)
@@ -149,6 +171,7 @@ export default function UserDashboard() {
   const reportTypeData = [
     { name: 'Passport Returns', value: statistics.by_type.passport_returns },
     { name: 'Visa Returns', value: statistics.by_type.visa_returns },
+    { name: 'Staff Nominal Roll', value: statistics.by_type.staff_nominal_roll },
   ]
 
   const getStatusBadge = (status: string) => {
@@ -272,6 +295,119 @@ export default function UserDashboard() {
               </div>
               <p className="text-xs text-muted-foreground">
                 Approval rate
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Passport and Visa Counters */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">32-Page Passports Issued</CardTitle>
+              <Book className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{statistics.passport_32_total_issued}</div>
+              <p className="text-xs text-muted-foreground">
+                Total 32-page passports issued
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">64-Page Passports Issued</CardTitle>
+              <Book className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{statistics.passport_64_total_issued}</div>
+              <p className="text-xs text-muted-foreground">
+                Total 64-page passports issued
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Diplomatic Visas Issued</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{statistics.visa_diplomatic_total_issued}</div>
+              <p className="text-xs text-muted-foreground">
+                Total diplomatic visas issued
+              </p>
+            </CardContent>
+          </Card>
+          {/* Add more cards for other visa types as needed */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Business Visas Issued</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{statistics.visa_business_total_issued}</div>
+              <p className="text-xs text-muted-foreground">
+                Total business visas issued
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">STR Visas Issued</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{statistics.visa_str_total_issued}</div>
+              <p className="text-xs text-muted-foreground">
+                Total STR visas issued
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Tourist Visas Issued</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{statistics.visa_tourist_total_issued}</div>
+              <p className="text-xs text-muted-foreground">
+                Total tourist visas issued
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Official Visas Issued</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{statistics.visa_official_total_issued}</div>
+              <p className="text-xs text-muted-foreground">
+                Total official visas issued
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Transit Visas Issued</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{statistics.visa_transit_total_issued}</div>
+              <p className="text-xs text-muted-foreground">
+                Total transit visas issued
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">TWP Visas Issued</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{statistics.visa_twp_total_issued}</div>
+              <p className="text-xs text-muted-foreground">
+                Total TWP visas issued
               </p>
             </CardContent>
           </Card>

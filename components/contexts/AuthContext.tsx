@@ -21,6 +21,7 @@ export interface AuthContextType {
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string, firstName: string, lastName: string) => Promise<void>
   logout: () => void
+  updateUser: (updatedFields: Partial<User>) => Promise<void>
   hasRole: (role: UserRole | UserRole[]) => boolean
 }
 
@@ -112,6 +113,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("token")
   }
 
+  const updateUser = async (updatedFields: Partial<User>) => {
+    try {
+      setLoading(true)
+      const token = localStorage.getItem("token")
+      if (!token) throw new Error("No authentication token found.")
+
+      const response = await fetch(getApiUrl("/profile"), { // Assuming /profile is the endpoint for updating user details
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          first_name: updatedFields.firstName,
+          last_name: updatedFields.lastName,
+          email: updatedFields.email,
+        }),
+      })
+
+      if (!response.ok) throw new Error("Failed to update profile")
+
+      const data = await response.json()
+      const updatedUser: User = {
+        ...user!, // Use existing user data
+        firstName: data.user.first_name,
+        lastName: data.user.last_name,
+        email: data.user.email,
+      }
+
+      setUser(updatedUser)
+      localStorage.setItem("user", JSON.stringify(updatedUser))
+    } catch (error) {
+      console.error("Update user error:", error)
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const hasRole = (roles: UserRole | UserRole[]) => {
     if (!user) return false
     const roleArray = Array.isArray(roles) ? roles : [roles]
@@ -119,7 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, hasRole }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser, hasRole }}>{children}</AuthContext.Provider>
   )
 }
 

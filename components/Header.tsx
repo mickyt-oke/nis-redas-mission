@@ -106,12 +106,12 @@ export default function Header() {
                 >
                   Login
                 </Link>
-                <Link
+                {/* <Link
                   href="/register"
                   className="px-4 py-2 bg-[#1b7b3c] text-white hover:bg-[#155730] transition rounded-lg"
                 >
                   Register
-                </Link>
+                </Link> */}
               </>
             )}
           </div>
